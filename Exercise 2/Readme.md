@@ -1,87 +1,87 @@
-# Exercise 2 - libexif
+# Egzersiz 2 - libexif
 
-This time we will fuzz **libexif** EXIF parsing library. The goal is to find a crash/PoC for [**CVE-2009-3895**](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2009-3895) and another crash for [**CVE-2012-2836**](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2012-2836) in libexif 0.6.14.
+Bu kez **libexif** EXIF ayrıştırma kütüphanesini fuzz'layacağız. Amaç, libexif 0.6.14 sürümünde [**CVE-2009-3895**](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2009-3895) için bir çökme/PoC ve [**CVE-2012-2836**](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2012-2836) için başka bir çökme bulmaktır.
 
 <details>
-  <summary>For more information about CVE-2009-3895 and CVE-2012-2836 vulnerabilities, click me!</summary>
+  <summary>CVE-2009-3895 ve CVE-2012-2836 güvenlik açıkları hakkında daha fazla bilgi için, buraya tıklayın!</summary>
   --------------------------------------------------------------------------------------------------------
   
-**CVE-2009-3895** is a heap-based buffer overflow that can be triggered with an invalid EXIF image.
+**CVE-2009-3895**, geçersiz bir EXIF görseli ile tetiklenebilen heap tabanlı bir tampon taşması (heap-based buffer overflow) durur.
   
-  A heap-based buffer overflow is a type of buffer overflow that occurs in the heap data area, and it's usually related to explicit dynamic memory management (allocation/deallocation with malloc() and free() functions).
+  Heap tabanlı tampon taşması, heap veri alanında meydana gelen bir tampon taşması türüdür ve genellikle açık dinamik bellek yönetimiyle (malloc() ve free() fonksiyonlarıyla bellek ayırma/ayırma iptali) ilgilidir.
   
-  As a result, a remote attacker can exploit this issue to execute arbitrary code within the context of an application using the affected library.
+  Sonuç olarak, uzaktan bir saldırgan, bu sorunu etkilenen kütüphaneyi kullanan bir uygulamanın bağlamında (context) keyfi kod çalıştırmak için kullanabilir.
   
-  You can find more information about Heap-based buffer oveflow vulnerabilities at the following link: https://cwe.mitre.org/data/definitions/122.html
+  Heap tabanlı tampon taşması (Heap-based buffer overflow) güvenlik açıkları hakkında daha fazla bilgiyi şu bağlantıda bulabilirsiniz: https://cwe.mitre.org/data/definitions/122.html
   
   -------------------------------------------------------------------------
   
-  **CVE-2012-2836** is an Out-of-bounds Read vulneratibily that can be triggered via an image with crafted EXIF tags.
+  **CVE-2012-2836**, özel olarak hazırlanmış EXIF etiketleri (tags) içeren bir görsel yoluyla tetiklenebilen bir Sınır Dışı Okuma (Out-of-bounds Read) güvenlik açığıdır.
   
-  An Out-of-bounds Read is a vulnerability that occurs when the program reads data past the end, or before the beginning, of the intended buffer.
+  Sınır Dışı Okuma (Out-of-bounds Read), program veriyi hedeflenen tamponun (buffer) sonundan öteye ya da başlangıcından öncesine doğru okuduğunda meydana gelen bir güvenlik açığıdır.
   
-  As a result, it allows remote attackers to cause a denial of service or possibly obtain potentially sensitive information from process memory.
+  Sonuç olarak, uzaktan saldırganlara hizmet reddine (denial of service) yol açma ya da işlem belleğinden potansiyel olarak hassas bilgiler edinme imkânı verir.
   
-  You can find more information about Out-of-bounds Read vulnerabilities at the following link: https://cwe.mitre.org/data/definitions/125.html
+  Sınır Dışı Okuma (Out-of-bounds Read) güvenlik açıkları hakkında daha fazla bilgiyi şu bağlantıda bulabilirsiniz: https://cwe.mitre.org/data/definitions/125.html
   
 </details>
  
 
-## What you will learn
-Once you complete this exercise you will know how:
-- To fuzz a library using an external application
-- To use **afl-clang-lto**, a collision free instrumentation that is faster and provides better results than *afl-clang-fast*
-- To use Eclipse IDE as an easy alternative to GDB console for triaging
+## Neler öğreneceksiniz?
+Bu egzersizi tamamladığınızda şunları nasıl yapacağınızı bilmiş olacaksınız:
+- Harici (dış) bir uygulama kullanarak bir kütüphaneyi fuzz'lamak
+- *afl-clang-fast*'tan daha hızlı olan ve daha iyi sonuçlar sağlayan, çakışmasız (collision-free) bir enstrümantasyon olan **afl-clang-lto**'yu kullanmak
+- İnceleme (triage) için GDB konsoluna kolay bir alternatif olarak Eclipse IDE kullanmak
 
-## Read Before Start
-- I suggest you to try to **solve the exercise by yourself** without checking the solution. Try as hard as you can, and only if you get stuck, check out the example solution below.
-- AFL uses a non-deterministic testing algorithm, so two fuzzing sessions are never the same. That's why I highly recommend **to set a fixed seed (-s 123)**. This way your fuzzing results will be similar to those shown here and that will allow you to follow the exercises more easily.  
-- If you find a new vulnerability, **please submit a security report** to the project. If you need help or have any doubt about the process, the [GitHub Security Lab](mailto:securitylab.github.com) can help you with it :)
+## Başlamadan Önce Okuyun
+- Egzersizi, çözüme bakmadan **kendiniz çözmenizi** öneririm. Gücünüzün yettiği kadar çabalayın ve ancak takılırsanız aşağıdaki örnek çözüme bakın.
+- AFL, deterministik olmayan (non-deterministic) bir test algoritması kullanır, bu yüzden iki fuzzing oturumu asla aynı olmaz. Bu yüzden **sabit bir tohum değeri (seed) ayarlamanızı (-s 123)** şiddetle tavsiye ederim. Bu sayede fuzzing sonuçlarınız burada gösterilenlere benzer olacak ve egzersizleri daha kolay takip etmenizi sağlayacak.  
+- Yeni bir güvenlik açığı bulursanız, **lütfen projeye bir güvenlik raporu gönderin**. Bu süreç hakkında yardıma ihtiyacınız olursa ya da herhangi bir şüpheniz olursa [GitHub Security Lab](mailto:securitylab.github.com) size yardımcı olabilir :)
 
-## Contact
-Are you stuck and looking for help? Do you have suggestions for making this course better or just positive feedback so that we create more fuzzing content?
-Do you want to share your fuzzing experience with the community?
-Join the GitHub Security Lab Slack and head to the `#fuzzing` channel. [Request an invite to the GitHub Security Lab Slack](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
+## İletişim
+Takıldınız mı ve yardım mı arıyorsunuz? Bu kursu daha iyi hale getirmek için önerileriniz mi var, yoksa daha fazla fuzzing içeriği oluşturmamız için sadece olumlu geri bildirimler mi? 
+Fuzzing deneyiminizi toplulukla paylaşmak ister misiniz?
+GitHub Security Lab Slack'ine katılın ve `#fuzzing` kanalına gidin. [GitHub Security Lab Slack daveti isteyin](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
 
-## Environment
+## Ortam
 
-All the exercises have been tested on **Ubuntu 20.04.2 LTS**. I highly recommend you to use **the same OS version** to avoid different fuzzing results and to run AFL++ **on bare-metal** hardware, and not virtualized machines, for best performance.
+Tüm egzersizler **Ubuntu 20.04.2 LTS** üzerinde test edilmiştir. Farklı fuzzing sonuçlarını önlemek için **aynı işletim sistemi sürümünü** kullanmanızı ve en iyi performans için AFL++'ı **bare-metal** (sanallaştırılmamış) donanımda, sanallaştırılmış makinelerde değil, çalıştırmanızı şiddetle tavsiye ederim.
 
-Otherwise, you can find an Ubuntu 20.04.2 LTS VMware image [here](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing). You can also use VirtualBox instead of VMware.
+Aksi takdirde, Ubuntu 20.04.2 LTS VMware imajını [burada](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing) bulabilirsiniz. VMware yerine VirtualBox da kullanabilirsiniz.
 
-The username / password for this VM are `fuzz` / `fuzz`.
+Bu sanal makinenin kullanıcı adı / şifresi `fuzz` / `fuzz`'tur.
 
-## Do it yourself!
-In order to complete this exercise, you need to:
-1) Find an interface application that makes use of the libexif library
-2) Create a seed corpus of exif samples
-3) Compile libexif and the chosen application to be fuzzed using afl-clang-lto
-4) Fuzz libexif until you have a few unique crashes
-5) Triage the crashes to find a PoC for each vulnerability
-6) Fix the issues
+## Kendin yap!
+Bu egzersizi tamamlamak için şunları yapmanız gerekir:
+1) libexif kütüphanesini kullanan bir arayüz uygulaması bulmak
+2) Exif örneklerinden oluşan bir seed corpus (tohum külliyatı) oluşturmak
+3) libexif'i ve seçilen uygulamayı afl-clang-lto ile fuzz'lanacak şekilde derlemek
+4) Birkaç benzersiz çökme elde edene kadar libexif'i fuzz'lamak
+5) Her bir güvenlik açığı için PoC bulmak amacıyla çökmeleri incelemek (triage)
+6) Sorunları düzeltmek
 
-**Estimated time = 6 hours**
+**Tahmini süre = 6 saat**
 
 ---
 
 <details>
-  <summary>SPOILER ALERT! : Solution inside</summary>
+  <summary>SPOİLER UYARISI! : Çözüm içeride</summary>
 
-### Download and build your target
+### Hedefinizi indirin ve derleyin
 
-Let's first get our fuzzing target. Create a new directory for the project we want to fuzz:
+Önce fuzzing hedefimizi alalım. Fuzz'lamak istediğimiz proje için yeni bir dizin oluşturun:
 ```
 cd $HOME
 mkdir fuzzing_libexif && cd fuzzing_libexif/
 ```
 
-Download and uncompress libexif-0.6.14:
+libexif-0.6.14'ü indirin ve sıkıştırmayı açın:
 ```
 wget https://github.com/libexif/libexif/archive/refs/tags/libexif-0_6_14-release.tar.gz
 tar -xzvf libexif-0_6_14-release.tar.gz
 ```
   
-Build and install libexif:
+libexif'i derleyip kurun:
 
 ```
 cd libexif-libexif-0_6_14-release/
@@ -92,16 +92,16 @@ make
 make install
 ```
 
-### Choosing an interface application
+### Bir arayüz uygulaması seçme
   
-Since libexif is a library, we'll need another application that makes use of this library and which will be fuzzed. For this task we're going to use **exif command-line**. Type the following for download and uncompressing exif command-line 0.6.15:
+libexif bir kütüphane olduğundan, bu kütüphaneyi kullanan ve fuzz'lanacak başka bir uygulamaya ihtiyacımız olacak. Bu görev için **exif komut satırı aracını** kullanacağız. exif komut satırı aracı 0.6.15'i indirmek ve sıkıştırmasını açmak için şunu yazın:
 ```
 cd $HOME/fuzzing_libexif
 wget https://github.com/libexif/exif/archive/refs/tags/exif-0_6_15-release.tar.gz
 tar -xzvf exif-0_6_15-release.tar.gz
 ```
 
-Now, we can build and install exif command-line utility:
+Şimdi, exif komut satırı yardımcı programını derleyip kurabiliriz:
 ```
 cd exif-exif-0_6_15-release/
 autoreconf -fvi
@@ -110,35 +110,35 @@ make
 make install
 ```
   
-To test everything is working properly, just type:
+Her şeyin düzgün çalıştığını test etmek için sadece şunu yazın:
 ```
 $HOME/fuzzing_libexif/install/bin/exif
 ```
   
-and you should see something like that
+ve şuna benzer bir şey görmelisiniz
 
 ![](Images/Image1.png)
 
-### Seed corpus creation
+### Seed corpus (tohum külliyatı) oluşturma
   
-Now we need to get some exif samples. We're gonna use the sample images from the following repo: https://github.com/ianare/exif-samples. You can download it with:
+Şimdi bazı exif örneklerine ihtiyacımız var. Şu repodaki örnek görselleri kullanacağız: https://github.com/ianare/exif-samples. Şununla indirebilirsiniz:
 ```
 cd $HOME/fuzzing_libexif
 wget https://github.com/ianare/exif-samples/archive/refs/heads/master.zip
 unzip master.zip
 ```
   
-As an example, we can do:
+Örnek olarak şunu yapabiliriz:
 ```
 $HOME/fuzzing_libexif/install/bin/exif $HOME/fuzzing_libexif/exif-samples-master/jpg/Canon_40D_photoshop_import.jpg
 ```
   
-And the output should look like
+Ve çıktı şöyle görünmeli
 ![](Images/Image2.png)
 
-### Afl-clang-lto instrumentation
+### Afl-clang-lto enstrümantasyonu
 
-Now we're going to build libexif using **afl-clang-lto** as the compiler. 
+Şimdi libexif'i derleyici olarak **afl-clang-lto** kullanarak derleyeceğiz.
 
 ```
 rm -r $HOME/fuzzing_libexif/install
@@ -159,9 +159,9 @@ make
 make install
 ```
 
-As you can see, I used **afl-clang-lto** instead of *afl-clang-fast*. In general, *afl-clang-lto* is the best option out there because it's a collision-free instrumentation and it's faster than *afl-clang-fast*.
+Gördüğünüz gibi, *afl-clang-fast* yerine **afl-clang-lto** kullandım. Genel olarak, *afl-clang-lto* mevcut en iyi seçenektir çünkü çakışmasız (collision-free) bir enstrümantasyondur ve *afl-clang-fast*'tan daha hızlıdır.
 
-If you are not sure about when to use *afl-clang-lto* or *afl-clang-fast* you can check the following diagram extracted from [AFLplusplus : instrumenting that target](https://github.com/AFLplusplus/AFLplusplus#1-instrumenting-that-target)
+Ne zaman *afl-clang-lto* ne zaman *afl-clang-fast* kullanacağınızdan emin değilseniz, [AFLplusplus : instrumenting that target](https://github.com/AFLplusplus/AFLplusplus#1-instrumenting-that-target) sayfasından alınan şu şemaya bakabilirsiniz
 
 ```
 +--------------------------------+
@@ -189,72 +189,72 @@ If you are not sure about when to use *afl-clang-lto* or *afl-clang-fast* you ca
    use GCC mode (afl-gcc/afl-g++) (or afl-clang/afl-clang++ for clang)
 ```
   
-### Fuzzing time
+### Fuzzing zamanı
 
-Now, you can run the fuzzer with the following command:
+Şimdi, fuzzer'ı şu komutla çalıştırabilirsiniz:
 ```
 afl-fuzz -i $HOME/fuzzing_libexif/exif-samples-master/jpg/ -o $HOME/fuzzing_libexif/out/ -s 123 -- $HOME/fuzzing_libexif/install/bin/exif @@
 ```
   
-After a few minutes, you should have multiple crashes:
+Birkaç dakika sonra, birden fazla çökmeniz olmalı:
 
 ![](Images/Image3.png)
 
-### Triage
+### İnceleme (Triage)
   
-#### Eclipse setup
+#### Eclipse kurulumu
   
-In the exercise 1 we learned how to use GDB console for triaging crashes. In this second exercise, we'll see how to use Eclipse-CDT for debugging purposes.
+1. egzersizde çökmeleri incelemek (triage) için GDB konsolunu nasıl kullanacağımızı öğrendik. Bu ikinci egzersizde, hata ayıklama amaçları için Eclipse-CDT'yi nasıl kullanacağımızı göreceğiz.
   
-First of all, we can download it from:
+Her şeyden önce, buradan indirebiliriz:
 https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/2021-03/R/eclipse-cpp-2021-03-R-linux-gtk-x86_64.tar.gz
 
-If JAVA-SDK is not installed on your system, you can install it on Ubuntu with the following command:
+JAVA-SDK sisteminizde kurulu değilse, Ubuntu'da şu komutla kurabilirsiniz:
 ```
 sudo apt install default-jdk
 ```
   
-Then we can extract it with:
+Ardından sıkıştırmasını şöyle açabiliriz:
 ```
 tar -xzvf eclipse-cpp-2021-03-R-linux-gtk-x86_64.tar.gz
 ```
   
-Once we have started Eclipse-CDT, we need to import our source code into the Project Explorer. For that, we need to go to File -> Import -> and then we need to choose C/C++ -> "Existing code as makefile project". Then we need to select "Linux GCC" and browse for the Exif source code folder:
+Eclipse-CDT'yi başlattıktan sonra, kaynak kodumuzu Project Explorer'a aktarmamız (import) gerekiyor. Bunun için File -> Import'a gitmemiz ve ardından C/C++ -> "Existing code as makefile project" seçeneğini seçmemiz gerekir. Sonra "Linux GCC" seçip exif kaynak kodu klasörüne göz atmamız gerekir:
   
 ![](Images/Image4.png)
   
-If all went well, you should be able to see the "exif" folder into the Project explorer tab.
+Her şey yolunda gittiyse, Project Explorer sekmesinde "exif" klasörünü görebilmelisiniz.
   
   
-Now we're going to configure the debug parameters. For that we need to go to `Run -> Debug Configurations`. Then we select our exif project and browse for the exif binary:
+Şimdi hata ayıklama parametrelerini yapılandıracağız. Bunun için `Run -> Debug Configurations` yoluna gitmemiz gerekir. Sonra exif projemizi seçip exif binary'sine göz atmamız gerekir:
   
 ![](Images/Image5.png)  
   
-Then we need to set the input arguments. For that, go to the `"Arguments"` tab and set the path of one of the AFL crashes.
+Ardından girdi argümanlarını ayarlamamız gerekir. Bunun için `"Arguments"` sekmesine gidin ve AFL çökmelerinden birinin yolunu ayarlayın.
   
 ![](Images/Image6.png)
   
-Finally, we only need to click on `"Debug"` for starting the debugging sesion and the program will stop at the beginning of the main function.
+Son olarak, hata ayıklama oturumunu (debugging session) başlatmak için sadece `"Debug"` butonuna tıklamamız yeterli ve program main fonksiyonunun başında duracaktır.
   
-Having got to this point, we only need to click on `Run -> Resume` and the execution will stop when a segmentation fault is detected.
+Bu noktaya geldikten sonra, sadece `Run -> Resume` tıklamamız yeterli olup bir segmentation fault tespit edildiğinde yürütme duracaktır.
   
 ![](Images/Image7.png)  
 
-### Fix the issues
+### Sorunları düzeltme
   
-The last step of the exercise is to fix both bugs. Rebuild your target after the fixes and check that your PoCs don't crash the program anymore. This last part is left as exercise for the student.
+Egzersizin son adımı her iki hatayı da düzeltmektir. Düzeltmelerden sonra hedefinizi yeniden derleyin ve PoC'larınızın artık programı çökertmediğini kontrol edin. Bu son kısım, öğrenciye (size) egzersiz olarak bırakılmıştır.
   
   <details>
-  <summary>Solution inside</summary>
+  <summary>Çözüm içeride</summary>
    --------------------------------------------------------------------------------------------------
     
-  Official fixes:
+  Resmî düzeltmeler:
     
   - https://github.com/libexif/libexif/commit/8ce72b7f81e61ef69b7ad5bdfeff1516c90fa361
   - https://github.com/libexif/libexif/commit/00986f6fa979fe810b46e376a462c581f9746e06
     
    </details> 
 
-Alternatively, you can download a newer version of libexif, and check that both bugs have been fixed.
+Alternatif olarak, libexif'in daha yeni bir sürümünü indirebilir ve her iki hatanın da düzeltildiğini kontrol edebilirsiniz.
   
 </details>

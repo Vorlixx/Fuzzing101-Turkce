@@ -1,86 +1,86 @@
-# Exercise 3 - TCPdump
+# Egzersiz 3 - TCPdump
 
-In this exercise we will fuzz **TCPdump** packet analyzer. The goal is to find a crash/PoC for [**CVE-2017-13028**](https://www.cvedetails.com/cve/CVE-2017-13028/) in TCPdump 4.9.2.
+Bu egzersizde **TCPdump** paket analizörünü (packet analyzer) fuzz'layacağız. Amaç, TCPdump 4.9.2 sürümünde [**CVE-2017-13028**](https://www.cvedetails.com/cve/CVE-2017-13028/) için bir çökme/PoC bulmaktır.
 
 <details>
-  <summary>For more information about CVE-2017-13028 vulnerability, click me!</summary>
+  <summary>CVE-2017-13028 güvenlik açığı hakkında daha fazla bilgi için, buraya tıklayın!</summary>
   --------------------------------------------------------------------------------------------------------
   
-**CVE-2017-13028** is an Out-of-bounds Read vulneratibily that can be triggered via a BOOTP packet (Bootstrap Protocol).
+**CVE-2017-13028**, bir BOOTP (Bootstrap Protocol) paketi yoluyla tetiklenebilen bir Sınır Dışı Okuma (Out-of-bounds Read) güvenlik açığıdır.
   
-  An Out-of-bounds Read is a vulnerability that occurs when the program reads data past the end, or before the beginning, of the intended buffer.
+  Sınır Dışı Okuma (Out-of-bounds Read), program veriyi hedeflenen tamponun (buffer) sonundan öteye ya da başlangıcından öncesine doğru okuduğunda meydana gelen bir güvenlik açığıdır.
   
-  As a result, it allows remote attackers to cause a denial of service or possibly obtain potentially sensitive information from process memory.
+  Sonuç olarak, uzaktan saldırganlara hizmet reddine (denial of service) yol açma ya da işlem belleğinden potansiyel olarak hassas bilgiler edinme imkânı verir.
   
-  You can find more information about Out-of-bounds Read vulnerabilities at the following link: https://cwe.mitre.org/data/definitions/125.html
+  Sınır Dışı Okuma (Out-of-bounds Read) güvenlik açıkları hakkında daha fazla bilgiyi şu bağlantıda bulabilirsiniz: https://cwe.mitre.org/data/definitions/125.html
   
 </details>
 
-## What you will learn
-Once you complete this exercise you will know:
-- What is **ASan (Address Sanitizer)**, a runtime memory error detection tool
-- How to use ASAN to fuzz a target
-- How much easy is to triage the crashes using ASan
+## Neler öğreneceksiniz?
+Bu egzersizi tamamladığınızda şunları bilmiş olacaksınız:
+- **ASan (Address Sanitizer)** nedir, çalışma zamanı (runtime) bellek hatası tespit aracı
+- Bir hedefi fuzz'lamak için ASan nasıl kullanılır
+- Çökmeleri ASan ile incelemek (triage) ne kadar kolaydır
 
-## Read Before Start
-- I suggest you to try to **solve the exercise by yourself** without checking the solution. Try as hard as you can, and only if you get stuck, check out the example solution below.
-- AFL uses a non-deterministic testing algorithm, so two fuzzing sessions are never the same. That's why I highly recommend **to set a fixed seed (-s 123)**. This way your fuzzing results will be similar to those shown here and that will allow you to follow the exercises more easily.  
-- If you find a new vulnerability, **please submit a security report** to the project. If you need help or have any doubt about the process, the [GitHub Security Lab](mailto:securitylab.github.com) can help you with it :)
+## Başlamadan Önce Okuyun
+- Egzersizi, çözüme bakmadan **kendiniz çözmenizi** öneririm. Gücünüzün yettiği kadar çabalayın ve ancak takılırsanız aşağıdaki örnek çözüme bakın.
+- AFL, deterministik olmayan (non-deterministic) bir test algoritması kullanır, bu yüzden iki fuzzing oturumu asla aynı olmaz. Bu yüzden **sabit bir tohum değeri (seed) ayarlamanızı (-s 123)** şiddetle tavsiye ederim. Bu sayede fuzzing sonuçlarınız burada gösterilenlere benzer olacak ve egzersizleri daha kolay takip etmenizi sağlayacak.  
+- Yeni bir güvenlik açığı bulursanız, **lütfen projeye bir güvenlik raporu gönderin**. Bu süreç hakkında yardıma ihtiyacınız olursa ya da herhangi bir şüpheniz olursa [GitHub Security Lab](mailto:securitylab.github.com) size yardımcı olabilir :)
 
-## Contact
-Are you stuck and looking for help? Do you have suggestions for making this course better or just positive feedback so that we create more fuzzing content?
-Do you want to share your fuzzing experience with the community?
-Join the GitHub Security Lab Slack and head to the `#fuzzing` channel. [Request an invite to the GitHub Security Lab Slack](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
+## İletişim
+Takıldınız mı ve yardım mı arıyorsunuz? Bu kursu daha iyi hale getirmek için önerileriniz mi var, yoksa daha fazla fuzzing içeriği oluşturmamız için sadece olumlu geri bildirimler mi? 
+Fuzzing deneyiminizi toplulukla paylaşmak ister misiniz?
+GitHub Security Lab Slack'ine katılın ve `#fuzzing` kanalına gidin. [GitHub Security Lab Slack daveti isteyin](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
 
-## Environment
+## Ortam
 
-All the exercises have been tested on **Ubuntu 20.04.2 LTS**. I highly recommend you to use **the same OS version** to avoid different fuzzing results and to run AFL++ **on bare-metal** hardware, and not virtualized machines, for best performance.
+Tüm egzersizler **Ubuntu 20.04.2 LTS** üzerinde test edilmiştir. Farklı fuzzing sonuçlarını önlemek için **aynı işletim sistemi sürümünü** kullanmanızı ve en iyi performans için AFL++'ı **bare-metal** (sanallaştırılmamış) donanımda, sanallaştırılmış makinelerde değil, çalıştırmanızı şiddetle tavsiye ederim.
 
-Otherwise, you can find an Ubuntu 20.04.2 LTS VMware image [here](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing). You can also use VirtualBox instead of VMware.
+Aksi takdirde, Ubuntu 20.04.2 LTS VMware imajını [burada](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing) bulabilirsiniz. VMware yerine VirtualBox da kullanabilirsiniz.
 
-The username / password for this VM are `fuzz` / `fuzz`.
+Bu sanal makinenin kullanıcı adı / şifresi `fuzz` / `fuzz`'tur.
 
-## Do it yourself!
-In order to complete this exercise, you need to:
-1) Find an efficient way to fuzz TCPdump
-2) Try to figure out how to enable ASan for fuzzing
-3) Fuzz TCPdump until you have a few unique crashes
-4) Triage the crashes to find a PoC for the vulnerability
-5) Fix the issue
+## Kendin yap!
+Bu egzersizi tamamlamak için şunları yapmanız gerekir:
+1) TCPdump'ı fuzz'lamak için verimli bir yol bulmak
+2) Fuzzing için ASan'ı nasıl etkinleştireceğinizi bulmaya çalışmak
+3) Birkaç benzersiz çökme elde edene kadar TCPdump'ı fuzz'lamak
+4) Güvenlik açığı için PoC bulmak amacıyla çökmeleri incelemek (triage)
+5) Sorunu düzeltmek
 
-**Estimated time = 4 hours**
+**Tahmini süre = 4 saat**
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------
 
 <details>
-  <summary>SPOILER ALERT! : Solution inside</summary>
+  <summary>SPOİLER UYARISI! : Çözüm içeride</summary>
 
-### Download and build your target
+### Hedefinizi indirin ve derleyin
 
-Let's first get our fuzzing target. Create a new directory for the project you want to fuzz:
+Önce fuzzing hedefimizi alalım. Fuzz'lamak istediğiniz proje için yeni bir dizin oluşturun:
 ```
 cd $HOME
 mkdir fuzzing_tcpdump && cd fuzzing_tcpdump/
 ```
 
-Download and uncompress tcpdump-4.9.2.tar.gz
+tcpdump-4.9.2.tar.gz'yi indirin ve sıkıştırmasını açın
 ```
 wget https://github.com/the-tcpdump-group/tcpdump/archive/refs/tags/tcpdump-4.9.2.tar.gz
 tar -xzvf tcpdump-4.9.2.tar.gz
 ```
 
-We also need to download libpcap, a cross-platform library that is needed by TCPdump. Download and uncompress libpcap-1.8.0.tar.gz:
+Ayrıca TCPdump için gerekli olan platformlar arası bir kütüphane olan libpcap'ı indirmemiz gerekiyor. libpcap-1.8.0.tar.gz'yi indirin ve sıkıştırmasını açın:
 ```
 wget https://github.com/the-tcpdump-group/libpcap/archive/refs/tags/libpcap-1.8.0.tar.gz
 tar -xzvf libpcap-1.8.0.tar.gz
 ```
 
-We need to rename ``libpcap-libpcap-1.8.0`` to ``libpcap-1.8.0``. Otherwise, tcpdump doesn't find the ``libpcap.a`` local path:
+``libpcap-libpcap-1.8.0`` ismini ``libpcap-1.8.0`` olarak değiştirmemiz gerekiyor. Aksi takdirde tcpdump, ``libpcap.a`` yerel yolunu bulamaz:
 ```
 mv libpcap-libpcap-1.8.0/ libpcap-1.8.0
 ```
   
-Build and install libpcap:
+libpcap'ı derleyip kurun:
 
 ```
 cd $HOME/fuzzing_tcpdump/libpcap-1.8.0/
@@ -88,7 +88,7 @@ cd $HOME/fuzzing_tcpdump/libpcap-1.8.0/
 make
 ```
 
-Now, we can build and install tcpdump:
+Şimdi, tcpdump'ı derleyip kurabiliriz:
 ```
 cd $HOME/fuzzing_tcpdump/tcpdump-tcpdump-4.9.2/
 ./configure --prefix="$HOME/fuzzing_tcpdump/install/"
@@ -96,47 +96,47 @@ make
 make install
 ```
 
-To test everything is working properly, just type:
+Her şeyin düzgün çalıştığını test etmek için sadece şunu yazın:
 ```
 $HOME/fuzzing_tcpdump/install/sbin/tcpdump -h
 ```
   
-and you should see something like that
+ve şuna benzer bir şey görmelisiniz
 
 ![](Images/Image1.png)
   
-**Before continuing to the following step, check that your version numbers matches the numbers above**
+**Bir sonraki adıma geçmeden önce, sürüm numaralarınızın yukarıdaki numaralarla eşleştiğini kontrol edin**
 
-### Seed corpus creation
+### Seed corpus (tohum külliyatı) oluşturma
 
-You can find a lot of .pcacp examples in the "./tests" folder. You can run these .pcap files with the following command-line:
+"./tests" klasöründe çok sayıda .pcap örneği bulabilirsiniz. Bu .pcap dosyalarını şu komut satırıyla çalıştırabilirsiniz:
 ```
-$HOME/fuzzing_tcpdump/install/sbin/tcpdump -vvvvXX -ee -nn -r [.pcap file]
+$HOME/fuzzing_tcpdump/install/sbin/tcpdump -vvvvXX -ee -nn -r [.pcap dosyası]
 ```
   
-For example:
+Örneğin:
 ```
 $HOME/fuzzing_tcpdump/install/sbin/tcpdump -vvvvXX -ee -nn -r ./tests/geneve.pcap
 ```
   
-And the output should look like
+Ve çıktı şöyle görünmeli
 ![](Images/Image2.png)
   
 ### AddressSanitizer
   
-**AddressSanitizer (ASan)** is a fast memory error detector for C and C++. It was originally developed by Google (Konstantin Serebryany, Derek Bruening, Alexander Potapenko, Dmitry Vyukov) and first released in May 2011.
+**AddressSanitizer (ASan)**, C ve C++ için hızlı bir bellek hatası tespit edicidir. Başlangıçta Google tarafından geliştirildi (Konstantin Serebryany, Derek Bruening, Alexander Potapenko, Dmitry Vyukov) ve ilk kez Mayıs 2011'de yayımlandı.
 
-It consists of a compiler instrumentation module and a run-time library. The tool is capable of finding out-of-bounds accesses to heap, stack, and global objects, as well as use-after-free, double-free and memory leaks bugs.
+Bir derleyici enstrümantasyon modülü ve bir çalışma zamanı (runtime) kütüphanesinden oluşur. Araç, heap, stack ve global nesnelere sınır dışı (out-of-bounds) erişimleri, ayrıca use-after-free, double-free ve bellek sızıntısı (memory leak) hatalarını bulabilmektedir.
 
-AddressSanitizer is open source and is integrated with the LLVM compiler tool chain starting from version 3.1. While it was originally developed as a project for LLVM, it has been ported to GCC and it is included into GCC versions >= 4.8
+AddressSanitizer açık kaynaklıdır ve 3.1 sürümünden itibaren LLVM derleyici araç zinciriyle bütünleşiktir. Başlangıçta bir LLVM projesi olarak geliştirilmiş olsa da GCC'ye taşınmıştır ve GCC >= 4.8 sürümlerine dahildir.
 
-You can find more information about AddressSanitizer at the following [link](https://clang.llvm.org/docs/AddressSanitizer.html).
+AddressSanitizer hakkında daha fazla bilgiyi şu [bağlantıda](https://clang.llvm.org/docs/AddressSanitizer.html) bulabilirsiniz.
   
-### Build with ASan enabled
+### ASan etkinleştirilmiş derleme
   
-Now we're going to build tcpdump (and libpcap) with ASAN enabled.
+Şimdi tcpdump'ı (ve libpcap'ı) ASAN etkinleştirilmiş şekilde derleyeceğiz.
 
-First of all, we're going to clean all previously compiled object files and executables:
+Her şeyden önce, önceden derlenmiş tüm nesne dosyalarını ve çalıştırılabilir dosyaları temizleyeceğiz:
 ```
 rm -r $HOME/fuzzing_tcpdump/install
 cd $HOME/fuzzing_tcpdump/libpcap-1.8.0/
@@ -146,7 +146,7 @@ cd $HOME/fuzzing_tcpdump/tcpdump-tcpdump-4.9.2/
 make clean
 ```
 
-Now, we set `AFL_USE_ASAN=1` before calling ``configure`` and ``make``:
+Şimdi, ``configure`` ve ``make`` çağırmadan önce `AFL_USE_ASAN=1` ayarlıyoruz:
 
 ```
 cd $HOME/fuzzing_tcpdump/libpcap-1.8.0/
@@ -159,48 +159,48 @@ AFL_USE_ASAN=1 CC=afl-clang-lto ./configure --prefix="$HOME/fuzzing_tcpdump/inst
 AFL_USE_ASAN=1 make
 AFL_USE_ASAN=1 make install
 ```  
-
-**Afl-clang-lto compilation can take a few minutes to complete**  
   
-### Fuzzing time
+**Afl-clang-lto derlemesi tamamlanması birkaç dakika sürebilir**  
+  
+### Fuzzing zamanı
 
-Now, you can run the fuzzer with the following command:
+Şimdi, fuzzer'ı şu komutla çalıştırabilirsiniz:
 ```
 afl-fuzz -m none -i $HOME/fuzzing_tcpdump/tcpdump-tcpdump-4.9.2/tests/ -o $HOME/fuzzing_tcpdump/out/ -s 123 -- $HOME/fuzzing_tcpdump/install/sbin/tcpdump -vvvvXX -ee -nn -r @@
 ```
 
-**Note: ASAN on 64-bit systems requests a lot of virtual memory. That's why I've set the flag "-m none" that disable memory limits in AFL**
+**Not: 64-bit sistemlerde ASAN çok fazla sanal bellek talep eder. Bu yüzden AFL'daki bellek sınırlarını devre dışı bırakan "-m none" seçeneğini ayarladım**
   
-After a while, you should have multiple crashes:
+Bir süre sonra, birden fazla çökmeniz olmalı:
   
 ![](Images/Image3.png)
 
 
-### Triage
+### İnceleme (Triage)
   
-To debug a program built with ASan is so much easier than in the previous exercises. All you need to do is to feed the program with the crash file:
+ASan ile derlenmiş bir programı hata ayıklamak, önceki egzersizlere göre çok daha kolaydır. Yapmanız gereken tek şey programı çökme dosyasıyla beslemektir:
   
 ```
 $HOME/fuzzing_tcpdump/install/sbin/tcpdump -vvvvXX -ee -nn -r '/home/antonio/fuzzing_tcpdump/out/default/crashes/id:000000,sig:06,src:002318+001583,time:10357087,op:splice,rep:8'
 ```
 
-and you will get a nice summary of the crash, including the execution trace:
+ve yürütme izini (execution trace) de içeren, çökmenin güzel bir özetini alacaksınız:
   
 ![](Images/Image4.png)  
 
-### Fix the issue
+### Sorunu düzeltin
 
-The last step of the exercise is to fix the bug! Rebuild your target after the fix and check that your PoC don't crash the program anymore. This last part is left as exercise for the student.
+Egzersizin son adımı hatayı düzeltmektir! Düzeltmeden sonra hedefinizi yeniden derleyin ve PoC'nuzun artık programı çökertmediğini kontrol edin. Bu son kısım, öğrenciye (size) egzersiz olarak bırakılmıştır.
   
   <details>
-  <summary>Solution inside</summary>
+  <summary>Çözüm içeride</summary>
    --------------------------------------------------------------------------------------------------
     
-  Official fix:
+  Resmî düzeltme:
   - https://github.com/the-tcpdump-group/tcpdump/commit/85078eeaf4bf8fcdc14a4e79b516f92b6ab520fc#diff-05f854a9033643de07f0d0059bc5b98f3b314eeb1e2499ea1057e925e6501ae8L381
     
    </details> 
 
-Alternatively, you can download a newer version of TCPdump, and check that both bugs have been fixed.
+Alternatif olarak, TCPdump'ın daha yeni bir sürümünü indirebilir ve her iki hatanın da düzeltildiğini kontrol edebilirsiniz.
   
 </details>

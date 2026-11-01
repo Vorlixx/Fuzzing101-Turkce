@@ -1,74 +1,74 @@
-# Exercise 4 - LibTIFF
+# Egzersiz 4 - LibTIFF
 
-This time we will fuzz **LibTIFF** image library. The goal is to find a crash/PoC for [**CVE-2016-9297**](https://www.cvedetails.com/cve/CVE-2016-9297/) in libtiff 4.0.4 and **to measure the code coverage data** of your crash/PoC. 
+Bu kez **LibTIFF** görsel kütüphanesini fuzz'layacağız. Amaç, libtiff 4.0.4 sürümünde [**CVE-2016-9297**](https://www.cvedetails.com/cve/CVE-2016-9297/) için bir çökme/PoC bulmak ve çökmenizin/PoC'nuzun **kod kapsamı (code coverage) verisini ölçmektir**.
 
 <details>
-  <summary>For more information about CVE-2016-9297 vulnerability, click me!</summary>
+  <summary>CVE-2016-9297 güvenlik açığı hakkında daha fazla bilgi için, buraya tıklayın!</summary>
   --------------------------------------------------------------------------------------------------------
   
-**CVE-2016-9297** is an Out-of-bounds Read vulnerability that can be triggered via crafted TIFF_SETGET_C16ASCII or TIFF_SETGET_C32_ASCII tag values.
+**CVE-2016-9297**, özel olarak hazırlanmış TIFF_SETGET_C16ASCII veya TIFF_SETGET_C32_ASCII etiket değerleri yoluyla tetiklenebilen bir Sınır Dışı Okuma (Out-of-bounds Read) güvenlik açığıdır.
   
-  An Out-of-bounds Read is a vulnerability that occurs when the program reads data past the end, or before the beginning, of the intended buffer.
+  Sınır Dışı Okuma (Out-of-bounds Read), program veriyi hedeflenen tamponun (buffer) sonundan öteye ya da başlangıcından öncesine doğru okuduğunda meydana gelen bir güvenlik açığıdır.
   
-  As a result, it allows remote attackers to cause a denial of service or possibly obtain potentially sensitive information from process memory.
+  Sonuç olarak, uzaktan saldırganlara hizmet reddine (denial of service) yol açma ya da işlem belleğinden potansiyel olarak hassas bilgiler edinme imkânı verir.
   
-  You can find more information about Out-of-bounds Read vulnerabilities at the following link: https://cwe.mitre.org/data/definitions/125.html
+  Sınır Dışı Okuma (Out-of-bounds Read) güvenlik açıkları hakkında daha fazla bilgiyi şu bağlantıda bulabilirsiniz: https://cwe.mitre.org/data/definitions/125.html
   
 </details>
 
-## What you will learn
-Once you complete this exercise you will know:
-- How to measure code coverage using LCOV
-- How to use code coverage data to improve the effectiveness of fuzzing
+## Neler öğreneceksiniz?
+Bu egzersizi tamamladığınızda şunları bilmiş olacaksınız:
+- LCOV kullanarak kod kapsamını (code coverage) nasıl ölçeceğinizi
+- Fuzzing'in etkinliğini artırmak için kod kapsamı verisini nasıl kullanacağınızı
 
-## Read Before Start
-- I suggest you to try to **solve the exercise by yourself** without checking the solution. Try as hard as you can, and only if you get stuck, check out the example solution below.
-- AFL uses a non-deterministic testing algorithm, so two fuzzing sessions are never the same. That's why I highly recommend **to set a fixed seed (-s 123)**. This way your fuzzing results will be similar to those shown here and that will allow you to follow the exercises more easily.  
-- If you find a new vulnerability, **please submit a security report** to the project. If you need help or have any doubt about the process, the [GitHub Security Lab](mailto:securitylab.github.com) can help you with it :)
+## Başlamadan Önce Okuyun
+- Egzersizi, çözüme bakmadan **kendiniz çözmenizi** öneririm. Gücünüzün yettiği kadar çabalayın ve ancak takılırsanız aşağıdaki örnek çözüme bakın.
+- AFL, deterministik olmayan (non-deterministic) bir test algoritması kullanır, bu yüzden iki fuzzing oturumu asla aynı olmaz. Bu yüzden **sabit bir tohum değeri (seed) ayarlamanızı (-s 123)** şiddetle tavsiye ederim. Bu sayede fuzzing sonuçlarınız burada gösterilenlere benzer olacak ve egzersizleri daha kolay takip etmenizi sağlayacak.  
+- Yeni bir güvenlik açığı bulursanız, **lütfen projeye bir güvenlik raporu gönderin**. Bu süreç hakkında yardıma ihtiyacınız olursa ya da herhangi bir şüpheniz olursa [GitHub Security Lab](mailto:securitylab.github.com) size yardımcı olabilir :)
 
-## Contact
-Are you stuck and looking for help? Do you have suggestions for making this course better or just positive feedback so that we create more fuzzing content?
-Do you want to share your fuzzing experience with the community?
-Join the GitHub Security Lab Slack and head to the `#fuzzing` channel. [Request an invite to the GitHub Security Lab Slack](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
+## İletişim
+Takıldınız mı ve yardım mı arıyorsunuz? Bu kursu daha iyi hale getirmek için önerileriniz mi var, yoksa daha fazla fuzzing içeriği oluşturmamız için sadece olumlu geri bildirimler mi? 
+Fuzzing deneyiminizi toplulukla paylaşmak ister misiniz?
+GitHub Security Lab Slack'ine katılın ve `#fuzzing` kanalına gidin. [GitHub Security Lab Slack daveti isteyin](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
 
-## Environment
+## Ortam
 
-All the exercises have been tested on **Ubuntu 20.04.2 LTS**. I highly recommend you to use **the same OS version** to avoid different fuzzing results and to run AFL++ **on bare-metal** hardware, and not virtualized machines, for best performance.
+Tüm egzersizler **Ubuntu 20.04.2 LTS** üzerinde test edilmiştir. Farklı fuzzing sonuçlarını önlemek için **aynı işletim sistemi sürümünü** kullanmanızı ve en iyi performans için AFL++'ı **bare-metal** (sanallaştırılmamış) donanımda, sanallaştırılmış makinelerde değil, çalıştırmanızı şiddetle tavsiye ederim.
 
-Otherwise, you can find an Ubuntu 20.04.2 LTS VMware image [here](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing). You can also use VirtualBox instead of VMware.
+Aksi takdirde, Ubuntu 20.04.2 LTS VMware imajını [burada](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing) bulabilirsiniz. VMware yerine VirtualBox da kullanabilirsiniz.
 
-The username / password for this VM are `fuzz` / `fuzz`.
+Bu sanal makinenin kullanıcı adı / şifresi `fuzz` / `fuzz`'tur.
 
-## Do it yourself!
-In order to complete this exercise, you need to:
-1) Fuzz LibTiff (with ASan enabled) until you have a few unique crashes
-2) Triage the crashes to find a PoC for the vulnerability
-3) Measure the code coverage of this PoC 
-4) Fix the issue
+## Kendin yap!
+Bu egzersizi tamamlamak için şunları yapmanız gerekir:
+1) LibTiff'i (ASan etkin şekilde) birkaç benzersiz çökme elde edene kadar fuzz'lamak
+2) Güvenlik açığı için PoC bulmak amacıyla çökmeleri incelemek (triage)
+3) Bu PoC'nun kod kapsamını ölçmek
+4) Sorunu düzeltmek
 
-**Estimated time = 3 hours**
+**Tahmini süre = 3 saat**
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------
 
 <details>
-  <summary>SPOILER ALERT! : Solution inside</summary>
+  <summary>SPOİLER UYARISI! : Çözüm içeride</summary>
 
-### Download and build your target
+### Hedefinizi indirin ve derleyin
 
-Let's first get our fuzzing target. Create a new directory for the project you want to fuzz:
+Önce fuzzing hedefimizi alalım. Fuzz'lamak istediğiniz proje için yeni bir dizin oluşturun:
 ```
 cd $HOME
 mkdir fuzzing_tiff && cd fuzzing_tiff/
 ```
 
-Download and uncompress libtiff 4.0.4:
+libtiff 4.0.4'ü indirin ve sıkıştırmasını açın:
 ```
 wget https://download.osgeo.org/libtiff/tiff-4.0.4.tar.gz
 tar -xzvf tiff-4.0.4.tar.gz
 ```
 
 
-Now, we can build and install libtiff:
+Şimdi, libtiff'i derleyip kurabiliriz:
 ```
 cd tiff-4.0.4/
 ./configure --prefix="$HOME/fuzzing_tiff/install/" --disable-shared
@@ -76,30 +76,30 @@ make
 make install
 ```
   
-As target binary we can just fuzz the ``tiffinfo`` binary located in the ``/bin`` folder. As seed input corpus, we're gonna use the sample images from the ``/test/images/`` folder.
+Hedef binary olarak sadece ``/bin`` klasöründe bulunan ``tiffinfo`` binary'sini fuzz'layabiliriz. Seed girdi külliyatı olarak ``/test/images/`` klasöründeki örnek görselleri kullanacağız.
   
-To test everything is working properly, just type:
+Her şeyin düzgün çalıştığını test etmek için sadece şunu yazın:
 ```
 $HOME/fuzzing_tiff/install/bin/tiffinfo -D -j -c -r -s -w $HOME/fuzzing_tiff/tiff-4.0.4/test/images/palette-1c-1b.tiff
 ```
   
-and you should see something like that
+ve şuna benzer bir şey görmelisiniz
 ![](Images/Image1.png)
   
-In the last command line you can see that I enabled all these flags: "-j -c -r -s -w". This is to improve the **code coverage** and increase the chances of finding the bug.
+Son komut satırında tüm şu bayrakları etkinleştirdim: "-j -c -r -s -w". Bu, **kod kapsamını (code coverage)** iyileştirmek ve hatayı bulma şansını artırmak içindir.
 
-But how can we measure the code coverage of a given input case?
+Peki ama belirli bir girdi dosyasının kod kapsamını nasıl ölçebiliriz?
   
-### Code coverage
+### Kod kapsamı (Code coverage)
   
-Code coverage is a software metric that show the number of times each line of code is triggered. By using code coverage we will get to know which parts of the code have been reached by the fuzzer and visualizes the fuzzing process.
-  
-First of all, we need to install lcov. We can do it with the following command:
+Kod kapsamı, her bir kod satırının kaç kez tetiklendiğini gösteren bir yazılım metriğidir. Kod kapsamını kullanarak fuzzer'ın kodun hangi kısımlarına ulaştığını öğrenecek ve fuzzing sürecini görselleştireceğiz.
+
+Her şeyden önce, lcov'u kurmamız gerekir. Bunu şu komutla yapabiliriz:
 ```
 sudo apt install lcov
 ```
 
-Now we need to rebuild libTIFF with the ``--coverage`` flag (compiler and linker):
+Şimdi libTIFF'i ``--coverage`` bayrağıyla (derleyici ve bağlayıcı/linker) yeniden derlememiz gerekiyor:
 ```
 rm -r $HOME/fuzzing_tiff/install
 cd $HOME/fuzzing_tiff/tiff-4.0.4/
@@ -109,7 +109,7 @@ CFLAGS="--coverage" LDFLAGS="--coverage" ./configure --prefix="$HOME/fuzzing_tif
 make
 make install
 ```  
-Then we can collect code coverage data by typing the following:
+Ardından kod kapsamı verisini şunu yazarak toplayabiliriz:
 
 ```
 cd $HOME/fuzzing_tiff/tiff-4.0.4/
@@ -119,35 +119,35 @@ $HOME/fuzzing_tiff/install/bin/tiffinfo -D -j -c -r -s -w $HOME/fuzzing_tiff/tif
 lcov --no-checksum --directory ./ --capture --output-file app2.info
 ```
   
-I will try to explain each of the commands:
-  - ``lcov --zerocounters --directory ./`` : Reset previous counters
-  - ``lcov --capture --initial --directory ./ --output-file app.info`` : Return the "baseline" coverage data file that contains zero coverage for every instrumented line
-  - ``$HOME/fuzzing_tiff/install/bin/tiffinfo -D -j -c -r -s -w $HOME/fuzzing_tiff/tiff-4.0.4/test/images/palette-1c-1b.tiff`` : Run the application you want to analyze . You can run it multiple times with different inputs
-  - ``lcov --no-checksum --directory ./ --capture --output-file app2.info``: Save the current coverage state into the app2.info file
+Her bir komutu açıklamaya çalışacağım:
+  - ``lcov --zerocounters --directory ./`` : Önceki sayaçları sıfırla
+  - ``lcov --capture --initial --directory ./ --output-file app.info`` : Enstrümante edilmiş her satır için sıfır kapsam içeren "baseline" (temel) kapsam veri dosyasını döndürür
+  - ``$HOME/fuzzing_tiff/install/bin/tiffinfo -D -j -c -r -s -w $HOME/fuzzing_tiff/tiff-4.0.4/test/images/palette-1c-1b.tiff`` : Analiz etmek istediğiniz uygulamayı çalıştırın. Farklı girdilerle birden çok kez çalıştırabilirsiniz
+  - ``lcov --no-checksum --directory ./ --capture --output-file app2.info``: Mevcut kapsam durumunu app2.info dosyasına kaydedin
 
-Finally, we have to generate the HTML output:
+Son olarak, HTML çıktısını üretmemiz gerekir:
 ```
 genhtml --highlight --legend -output-directory ./html-coverage/ ./app2.info
 ```
   
-If all went well, the code coverage report was created in the ``html-coverage`` folder. Just open the ``./html-coverage/index.html`` file and you should see something like this:
+Her şey yolunda gittiyse, kod kapsamı raporu ``html-coverage`` klasöründe oluşturuldu. Sadece ``./html-coverage/index.html`` dosyasını açın ve şuna benzer bir şey görmelisiniz:
   
 ![](Images/Image2_2.png)
   
-Now you can browse trough the different folders and files, and see the number of times each line was executed.
+Şimdi farklı klasör ve dosyalara göz atabilir ve her satırın kaç kez çalıştırıldığını görebilirsiniz.
   
-### Fuzzing time
+### Fuzzing zamanı
 
-Now we're going to compile libtiff with ASAN enabled.
+Şimdi libtiff'i ASAN etkinleştirilmiş şekilde derleyeceğiz.
 
-First of all, we're going to clean all previously compiled object files and executables:
+Her şeyden önce, önceden derlenmiş tüm nesne dosyalarını ve çalıştırılabilir dosyaları temizleyeceğiz:
 ```
 rm -r $HOME/fuzzing_tiff/install
 cd $HOME/fuzzing_tiff/tiff-4.0.4/
 make clean
 ```
 
-Now, we set AFL_USE_ASAN=1 before calling make:
+Şimdi, make çağırmadan önce AFL_USE_ASAN=1 ayarlıyoruz:
 ```
 export LLVM_CONFIG="llvm-config-11"
 CC=afl-clang-lto ./configure --prefix="$HOME/fuzzing_tiff/install/" --disable-shared
@@ -155,38 +155,38 @@ AFL_USE_ASAN=1 make -j4
 AFL_USE_ASAN=1 make install
 ```
 
-Now, you can run the fuzzer with the following command:
+Şimdi, fuzzer'ı şu komutla çalıştırabilirsiniz:
 ```
 afl-fuzz -m none -i $HOME/fuzzing_tiff/tiff-4.0.4/test/images/ -o $HOME/fuzzing_tiff/out/ -s 123 -- $HOME/fuzzing_tiff/install/bin/tiffinfo -D -j -c -r -s -w @@
 ```
 
-After a few minutes you should see somethink like this:
+Birkaç dakika sonra şuna benzer bir şey görmelisiniz:
 ![](Images/Image2.png)
   
-### Triage
+### İnceleme (Triage)
   
-The ASan trace may looks like:
+ASan izi (trace) şöyle görünebilir:
   
 ![](Images/Image3.png)
   
-### Code coverage measure
+### Kod kapsamı ölçümü
   
-Now, try to measure the code coverage of your PoC. In order to complete this part, **you need to obtain a coverage html report**, similar to the example above.
+Şimdi, PoC'nuzun kod kapsamını ölçmeye çalışın. Bu kısmı tamamlamak için **bir kapsam HTML raporu elde etmeniz gerekiyor**, yukarıdaki örneğe benzer şekilde.
   
-### Fix the issue
+### Sorunu düzeltin
 
-The last step of the exercise is to fix the bug! Rebuild your target after the fix and check that your PoC don't crash the program anymore. This last part is left as exercise for the student.
+Egzersizin son adımı hatayı düzeltmektir! Düzeltmeden sonra hedefinizi yeniden derleyin ve PoC'nuzun artık programı çökertmediğini kontrol edin. Bu son kısım, öğrenciye (size) egzersiz olarak bırakılmıştır.
   
   <details>
-  <summary>Solution inside</summary>
+  <summary>Çözüm içeride</summary>
    --------------------------------------------------------------------------------------------------
     
-  Official fix:
+  Resmî düzeltme:
   - https://github.com/vadz/libtiff/commit/30c9234c7fd0dd5e8b1e83ad44370c875a0270ed
     
    </details> 
 
-Alternatively, you can download a newer version of LibTIFF, and check that both bugs have been fixed.
+Alternatif olarak, LibTIFF'in daha yeni bir sürümünü indirebilir ve her iki hatanın da düzeltildiğini kontrol edebilirsiniz.
   
   
 </details>

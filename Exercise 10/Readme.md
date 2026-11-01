@@ -1,56 +1,56 @@
-# Exercise 10 (Final Challenge) - V8 engine
+# Egzersiz 10 (Final Meydan Okuma) - V8 motoru
 
-For this exercise  we will fuzz **V8** Google’s JavaScript and WebAssembly engine. The goal is to find a crash/PoC for [**CVE-2019-5847**](https://nvd.nist.gov/vuln/detail/CVE-2019-5847) in v8 7.5. 
+Bu egzersizde **V8**, Google'ın JavaScript ve WebAssembly motorunu fuzz'layacağız. Amaç, v8 7.5 sürümünde [**CVE-2019-5847**](https://nvd.nist.gov/vuln/detail/CVE-2019-5847) için bir çökme/PoC bulmaktır.
 
 <details>
-  <summary>For more information about CVE-2019-5847 vulnerability, click me!</summary>
+  <summary>CVE-2019-5847 güvenlik açığı hakkında daha fazla bilgi için, buraya tıklayın!</summary>
   --------------------------------------------------------------------------------------------------------
   
-  **CVE-2019-5847** is a vulnerability that may cause an infinite recursion via a crafted file.
+  **CVE-2019-5847**, özel olarak hazırlanmış (crafted) bir dosya yoluyla sonsuz özyinelemeye (infinite recursion) yol açabilen bir güvenlik açığıdır.
   
-  A heap-based memory corruption is a type of memory corruption that occurs in the heap data area, and it's usually related to explicit dynamic memory management (allocation/deallocation with malloc() and free() functions).
+  Heap tabanlı bellek bozulması (heap-based memory corruption), heap veri alanında meydana gelen bir bellek bozulması türüdür ve genellikle açık dinamik bellek yönetimiyle (malloc() ve free() fonksiyonlarıyla bellek ayırma/ayırma iptali) ilgilidir.
 
-As a result, a remote attacker can exploit this issue to execute arbitrary code within the context of an application using the affected library.
+Sonuç olarak, uzaktan bir saldırgan, bu sorunu etkilenen kütüphaneyi kullanan bir uygulamanın bağlamında (context) keyfi kod çalıştırmak için kullanabilir.
 
-You can find more information about Heap-based memory corruption vulnerabilities at the following link: https://cwe.mitre.org/data/definitions/122.html
+Heap tabanlı bellek bozulması (Heap-based memory corruption) güvenlik açıkları hakkında daha fazla bilgiyi şu bağlantıda bulabilirsiniz: https://cwe.mitre.org/data/definitions/122.html
   
 </details>
 
-## What you will learn
-Once you complete this exercise you will know-how: 
-- How to use Fuzzilli to fuzz Javascript engines
+## Neler öğreneceksiniz?
+Bu egzersizi tamamladığınızda şunları bilmiş olacaksınız: 
+- JavaScript motorlarını fuzz'lamak için Fuzzilli'yi nasıl kullanacağınızı
 
-## Read Before Start
-- I suggest you try to **solve the exercise by yourself** without checking the solution. Try as hard as you can, and only if you get stuck, check out the example solution below.
-- If you find a new vulnerability, **please submit a security report** to the project. If you need help or have any doubt about the process, the [GitHub Security Lab](mailto:securitylab.github.com) can help you with it :)
+## Başlamadan Önce Okuyun
+- Egzersizi, çözüme bakmadan **kendiniz çözmenizi** öneririm. Gücünüzün yettiği kadar çabalayın ve ancak takılırsanız aşağıdaki örnek çözüme bakın.
+- Yeni bir güvenlik açığı bulursanız, **lütfen projeye bir güvenlik raporu gönderin**. Bu süreç hakkında yardıma ihtiyacınız olursa ya da herhangi bir şüpheniz olursa [GitHub Security Lab](mailto:securitylab.github.com) size yardımcı olabilir :)
 
-## Contact
-Are you stuck and looking for help? Do you have suggestions for making this course better or just positive feedback so that we create more similar content?
-Do you want to share your fuzing experience with the community?
-Join the GitHub Security Lab Slack and head to the `#fuzzing` channel. [Request an invite to the GitHub Security Lab Slack](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
+## İletişim
+Takıldınız mı ve yardım mı arıyorsunuz? Bu kursu daha iyi hale getirmek için önerileriniz mi var, yoksa daha fazla benzer içerik oluşturmamız için sadece olumlu geri bildirimler mi? 
+Fuzzing deneyiminizi toplulukla paylaşmak ister misiniz?
+GitHub Security Lab Slack'ine katılın ve `#fuzzing` kanalına gidin. [GitHub Security Lab Slack daveti isteyin](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
 
-## Environment
+## Ortam
 
-All the exercises have been tested on **Ubuntu 18.04 LTS**. I highly recommend you to use **the same OS version** to be able to follow the guidelines. You can find an Ubuntu 18.04 LTS VMware image [here](https://drive.google.com/file/d/1925mpjbIL8ugc7WcOooIatYWnMKSX-g4/view?usp=sharing). You can also use VirtualBox instead of VMware.
+Tüm egzersizler **Ubuntu 18.04 LTS** üzerinde test edilmiştir. Rehberi takip edebilmek için **aynı işletim sistemi sürümünü** kullanmanızı şiddetle tavsiye ederim. Ubuntu 18.04 LTS VMware imajını [burada](https://drive.google.com/file/d/1925mpjbIL8ugc7WcOooIatYWnMKSX-g4/view?usp=sharing) bulabilirsiniz. VMware yerine VirtualBox da kullanabilirsiniz.
 
-The username / password for this VM are `fuzz` / `fuzz`.
+Bu sanal makinenin kullanıcı adı / şifresi `fuzz` / `fuzz`'tur.
 
 ## Fuzzilli
 
-Fuzzilli is a (coverage-)guided fuzzer for dynamic language interpreters based on a custom intermediate language ("FuzzIL") which can be mutated and translated to JavaScript. It's written and maintained by Samuel Groß, saelo@google.com.
+Fuzzilli, JavaScript'e dönüştürülebilen ve mutasyona uğratılabilen özel bir ara dil ("FuzzIL") temel alan, dinamik dil yorumlayıcıları için (coverage-)güdümlü bir fuzzer'dır. Samuel Groß (saelo@google.com) tarafından yazılmakta ve bakımı yapılmaktadır.
 
-You can find more information about Fuzzilli at [the official repository](https://github.com/googleprojectzero/fuzzilli/)
+Fuzzilli hakkında daha fazla bilgiyi [resmî repoda](https://github.com/googleprojectzero/fuzzilli/) bulabilirsiniz
 
-### Install dependencies
+### Bağımlılıkları kurun
 
-To get your environment fully ready, you may need to install some additional tools (ex. Swift, Git)
+Ortamınızı tamamen hazır hale getirmek için bazı ek araçlar kurmanız gerekebilir (örn. Swift, Git)
 
-Let's start installing the following dependencies:
+Şu bağımlılıkları kurarak başlayalım:
 ```
 sudo apt --yes install clang libcurl3 libpython2.7 libpython2.7-dev libcurl4 git
 ```
 
-Now, we can download Swift:
+Şimdi, Swift'i indirebiliriz:
 ```
 cd $HOME
 wget https://swift.org/builds/swift-4.2.1-release/ubuntu1804/swift-4.2.1-RELEASE/swift-4.2.1-RELEASE-ubuntu18.04.tar.gz
@@ -58,15 +58,15 @@ tar xzvf swift-4.2.1-RELEASE-ubuntu18.04.tar.gz
 sudo mv swift-4.2.1-RELEASE-ubuntu18.04 /usr/share/swift
 ```
 
-We also need to configure the PATH envvar:
+Ayrıca PATH ortam değişkenini (envvar) yapılandırmamız gerekiyor:
 ```
 echo "export PATH=/usr/share/swift/usr/bin:$PATH" >> ~/.bashrc
 source  ~/.bashrc
 ```
 
-### Install Fuzzilli
+### Fuzzilli'yi kurun
 
-Time for download and build Fuzzilli:
+Fuzzilli'yi indirme ve derleme zamanı:
 ```
 cd $HOME
 wget https://github.com/googleprojectzero/fuzzilli/archive/refs/tags/v0.9.zip
@@ -75,11 +75,11 @@ cd fuzzilli-0.9/
 swift build -c release -Xlinker='-lrt'
 ```
 
-## Download and build V8 Engine
+## V8 motorunu indirin ve derleyin
 
-### Download and setup depot_tools
+### depot_tools'u indirin ve kurun
 
-V8 use a package of scripts called depot_tools to manage checkouts and code reviews. The depot_tools package includes gclient, gcl, git-cl, repo, and others. We can install it with:
+V8, checkout'ları ve kod incelemelerini (code reviews) yönetmek için depot_tools adlı bir betik paketi kullanır. depot_tools paketi; gclient, gcl, git-cl, repo ve diğerlerini içerir. Şununla kurabiliriz:
 ```
 cd $HOME
 mkdir depot_tools && cd depot_tools
@@ -88,7 +88,7 @@ echo "export PATH=`pwd`/depot_tools:$PATH" >> ~/.bashrc
 source  ~/.bashrc
 ```
 
-### Get V8 source code:
+### V8 kaynak kodunu edinin:
 ```
 cd $HOME
 mkdir Fuzzing_v8_75 && cd Fuzzing_v8_75
@@ -98,35 +98,35 @@ git checkout 1ca088652d3aad04caceb648bcffef100bc4abc0
 gclient sync
 ```
 
-### Build and test V8:
+### V8'i derleyin ve test edin:
 
-First of all we need to install build dependencies:
+Her şeyden önce, derleme bağımlılıklarını kurmamız gerekir:
 ```
 ./build/install-build-deps.sh
 ```
 
-Generate build files using gn:
+gn kullanarak derleme dosyalarını (build files) oluşturun:
 ```
 gn gen out/Release "--args=is_debug=false"
 ```
 
-After that, we can compile with the following command line (it may take some time):
+Bundan sonra, şu komut satırıyla derleyebiliriz (biraz sürebilir):
 ```
 ninja -C out/Release
 ```
 
-Now, we can check the d8 binary with:
+Şimdi, d8 binary'sini şu komutla kontrol edebiliriz:
 ```
 ./out/Release/d8 ./test/fuzzer/parser/hello-world
 ```
 
-and you should see something like this:
+ve şuna benzer bir şey görmelisiniz:
 
 ![](Images/1.png)
 
-## Fuzzing time
+## Fuzzing zamanı
 
-Compile v8 with coverage instrumentation:
+v8'i coverage enstrümantasyonuyla derleyin:
 ```
 cd $HOME/Fuzzing_v8_75/v8
 cp ../../fuzzilli-0.9/Targets/V8/v8.patch ./
@@ -134,53 +134,53 @@ gn gen out/fuzzbuild --args='is_debug=false dcheck_always_on=true v8_static_libr
 ninja -C ./out/fuzzbuild
 ```
 
-Move to fuzzilli folder:
+Fuzzilli klasörüne geçin:
 ```
 cd $HOME/fuzzilli-0.9
 ```
 
-First of all, we need to disable the creation of core dump files:
+Her şeyden önce, core dump dosyalarının oluşturulmasını devre dışı bırakmamız gerekiyor:
 ```
 sudo sysctl -w 'kernel.core_pattern=|/bin/false'
 ```
 
-Now we can run fuzzilli with:
+Şimdi fuzzilli'yi şu komutla çalıştırabiliriz:
 ```
 swift run -Xlinker='-lrt' -c release FuzzilliCli --profile=v8 '/home/fuzz/Fuzzing_v8_75/v8/out/fuzzbuild/d8'
 ```
 
-For a complete list of options, type:
+Seçeneklerin tam listesi için şunu yazın:
 ```
 swift run -Xlinker='-lrt' FuzzilliCli --help
 ```
 
-If all went well, you should see something like:
+Her şey yolunda gittiyse, şuna benzer bir şey görmelisiniz:
 
 ![](Images/2.png)
 
-## Do it yourself!
-In order to solve this challenge, you need to:
+## Kendin yap!
+Bu meydan okumayı çözmek için şunları yapmanız gerekir:
 
-1) Download and build the vulnerable version
-2) Define a custom mutator to target the vulnerable code
-3) Fuzz with Fuzzilli until you have a few unique crashes
-4) Triage the crashes to find a PoC for the vulnerability
-5) Send your PoC (see below)
+1) Güvenlik açığı bulunan sürümü indirmek ve derlemek
+2) Güvenlik açığı bulunan kodu hedeflemek için özel bir mutatör (custom mutator) tanımlamak
+3) Birkaç benzersiz çökme elde edene kadar Fuzzilli ile fuzz'lamak
+4) Güvenlik açığı için PoC bulmak amacıyla çökmeleri incelemek (triage)
+5) PoC'nuzu göndermek (aşağıya bakın)
 
-## Challenge rules
-The rules are as follows:
-- Please, don't disclose your solution
-- In order to be the winner, you must provide a valid crash/PoC file
-- There will be 2 winners in total
-- I'll release a new hint every week
-- Send your solution by **28 February** to antoniomoralesmaldonado@gmail.com
-- The winners will receive a coupon to spend in the [GitHub Shop](https://thegithubshop.com/)
+## Meydan okuma kuralları
+Kurallar şunlardır:
+- Lütfen çözümünüzü açıklamayın (paylaşmayın)
+- Kazanan olmak için geçerli bir çökme/PoC dosyası sağlamanız gerekir
+- Toplamda 2 kazanan olacak
+- Her hafta yeni bir ipucu yayınlayacağım
+- Çözümünüzü **28 Şubat** tarihine kadar antoniomoralesmaldonado@gmail.com adresine gönderin
+- Kazananlar, [GitHub Shop](https://thegithubshop.com/)'ta harcayacakları bir kupon alacaklardır
 
-## Hints
-- 1º hint: 
+## İpuçları
+- 1. ipucu: 
 
 ```
 git checkout 7.5.288.22
 ```
 
-## This challenge ended on March 1, 2022. Thank you for your submissions!! :smiley:
+## Bu meydan okuma 1 Mart 2022'de sona erdi. Gönderimleriniz için teşekkürler!! :smiley:

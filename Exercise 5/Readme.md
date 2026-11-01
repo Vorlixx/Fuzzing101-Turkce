@@ -1,78 +1,78 @@
-# Exercise 5 - LibXML2
+# Egzersiz 5 - LibXML2
 
-For this exercize we will fuzz **LibXML2** XML parsing library. The goal is to find a crash/PoC for [**CVE-2017-9048**](https://nvd.nist.gov/vuln/detail/CVE-2017-9048) in LibXML2 2.9.4. 
+Bu egzersizde **LibXML2** XML ayrıştırma kütüphanesini fuzz'layacağız. Amaç, LibXML2 2.9.4 sürümünde [**CVE-2017-9048**](https://nvd.nist.gov/vuln/detail/CVE-2017-9048) için bir çökme/PoC bulmaktır.
 
 <details>
-  <summary>For more information about CVE-2017-9048 vulnerability, click me!</summary>
+  <summary>CVE-2017-9048 güvenlik açığı hakkında daha fazla bilgi için, buraya tıklayın!</summary>
   --------------------------------------------------------------------------------------------------------
   
-  **CVE-2017-9048** is an stack buffer overflow vulnerability affecting the DTD validation functionality of LibXML2.
+  **CVE-2017-9048**, LibXML2'nin DTD doğrulama (validation) işlevselliğini etkileyen bir stack tampon taşması (stack buffer overflow) güvenlik açığıdır.
   
-  A stack buffer overflow is a type of buffer overflow where the buffer being overwritten is allocated on the stack.
+  Stack tampon taşması, üzerine yazılan tamponun (buffer) stack üzerinde ayrıldığı bir tampon taşması türüdür.
   
- As a result, a remote attacker can exploit this issue to execute arbitrary code within the context of an application using the affected library.
+  Sonuç olarak, uzaktan bir saldırgan, bu sorunu etkilenen kütüphaneyi kullanan bir uygulamanın bağlamında (context) keyfi kod çalıştırmak için kullanabilir.
 
- You can find more information about stack buffer oveflow vulnerabilities at the following link: https://cwe.mitre.org/data/definitions/121.html
+  Stack tampon taşması (stack buffer overflow) güvenlik açıkları hakkında daha fazla bilgiyi şu bağlantıda bulabilirsiniz: https://cwe.mitre.org/data/definitions/121.html
   
 </details>
 
-## What you will learn
-Once you complete this exercise you will know how: 
-- To use custom dictionaries for helping the fuzzer to find new execution paths
-- To parallelize the fuzzing job accross multiple cores
+## Neler öğreneceksiniz?
+Bu egzersizi tamamladığınızda şunları nasıl yapacağınızı bilmiş olacaksınız: 
+- Fuzzer'ın yeni yürütme yolları bulmasına yardımcı olmak için özel (custom) sözlükler (dictionaries) kullanmak
+- Fuzzing işini birden fazla çekirdeğe paralelleştirmek
 
-## Read Before Start
-- I suggest you to try to **solve the exercise by yourself** without checking the solution. Try as hard as you can, and only if you get stuck, check out the example solution below.
-- AFL uses a non-deterministic testing algorithm, so two fuzzing sessions are never the same. That's why I highly recommend **to set a fixed seed (-s 123)**. This way your fuzzing results will be similar to those shown here and that will allow you to follow the exercises more easily.  
-- If you find a new vulnerability, **please submit a security report** to the project. If you need help or have any doubt about the process, the [GitHub Security Lab](mailto:securitylab.github.com) can help you with it :)
+## Başlamadan Önce Okuyun
+- Egzersizi, çözüme bakmadan **kendiniz çözmenizi** öneririm. Gücünüzün yettiği kadar çabalayın ve ancak takılırsanız aşağıdaki örnek çözüme bakın.
+- AFL, deterministik olmayan (non-deterministic) bir test algoritması kullanır, bu yüzden iki fuzzing oturumu asla aynı olmaz. Bu yüzden **sabit bir tohum değeri (seed) ayarlamanızı (-s 123)** şiddetle tavsiye ederim. Bu sayede fuzzing sonuçlarınız burada gösterilenlere benzer olacak ve egzersizleri daha kolay takip etmenizi sağlayacak.  
+- Yeni bir güvenlik açığı bulursanız, **lütfen projeye bir güvenlik raporu gönderin**. Bu süreç hakkında yardıma ihtiyacınız olursa ya da herhangi bir şüpheniz olursa [GitHub Security Lab](mailto:securitylab.github.com) size yardımcı olabilir :)
 
-## Contact
-Are you stuck and looking for help? Do you have suggestions for making this course better or just positive feedback so that we create more fuzzing content?
-Do you want to share your fuzzing experience with the community?
-Join the GitHub Security Lab Slack and head to the `#fuzzing` channel. [Request an invite to the GitHub Security Lab Slack](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
+## İletişim
+Takıldınız mı ve yardım mı arıyorsunuz? Bu kursu daha iyi hale getirmek için önerileriniz mi var, yoksa daha fazla fuzzing içeriği oluşturmamız için sadece olumlu geri bildirimler mi? 
+Fuzzing deneyiminizi toplulukla paylaşmak ister misiniz?
+GitHub Security Lab Slack'ine katılın ve `#fuzzing` kanalına gidin. [GitHub Security Lab Slack daveti isteyin](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
 
-## Environment
+## Ortam
 
-All the exercises have been tested on **Ubuntu 20.04.2 LTS**. I highly recommend you to use **the same OS version** to avoid different fuzzing results and to run AFL++ **on bare-metal** hardware, and not virtualized machines, for best performance.
+Tüm egzersizler **Ubuntu 20.04.2 LTS** üzerinde test edilmiştir. Farklı fuzzing sonuçlarını önlemek için **aynı işletim sistemi sürümünü** kullanmanızı ve en iyi performans için AFL++'ı **bare-metal** (sanallaştırılmamış) donanımda, sanallaştırılmış makinelerde değil, çalıştırmanızı şiddetle tavsiye ederim.
 
-Otherwise, you can find an Ubuntu 20.04.2 LTS VMware image [here](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing). You can also use VirtualBox instead of VMware.
+Aksi takdirde, Ubuntu 20.04.2 LTS VMware imajını [burada](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing) bulabilirsiniz. VMware yerine VirtualBox da kullanabilirsiniz.
 
-The username / password for this VM are `fuzz` / `fuzz`.
+Bu sanal makinenin kullanıcı adı / şifresi `fuzz` / `fuzz`'tur.
 
-## Dictionaries
+## Sözlükler (Dictionaries)
 
-When we want to fuzz complex text-based file formats (such as XML), it’s useful to provide the fuzzer with a dictionary containing a list of basic syntax tokens.
+Karmaşık metin tabanlı dosya formatlarını (XML gibi) fuzz'lamak istediğimizde, fuzzer'a temel sözdizimi (syntax) token'larının bir listesini içeren bir sözlük (dictionary) sağlamak faydalıdır.
 
-In the case of AFL, such a dictionary is simply a set of words or values which is used by AFL to apply changes to the current in-memory file. Specifically, AFL performs the following changes with the values provided in the dictionary:
-- Override: Replaces a specific position with n number of bytes, where n is the length of a dictionary entry.
-- Insert: Inserts the dictionary entry at the current file position, forcing all characters to move n positions down and increasing file size.
+AFL söz konusu olduğunda, böyle bir sözlük basitçe, AFL'ın bellek içi (in-memory) mevcut dosyaya değişiklikler uygulamak için kullandığı bir kelime veya değer kümesidir. Özellikle AFL, sözlükte sağlanan değerlerle şu değişiklikleri yapar:
+- Override (Üzerine yazma): Belirli bir konumu n baytla değiştirir; n, sözlük girdisinin uzunluğudur.
+- Insert (Ekleme): Sözlük girdisini dosyanın mevcut konumuna ekler, tüm karakterleri n konum aşağı iterek dosya boyutunu artırır.
 
-You can find a good bunch of examples [here](https://github.com/AFLplusplus/AFLplusplus/tree/stable/dictionaries)
+Bol miktarda örneği [burada](https://github.com/AFLplusplus/AFLplusplus/tree/stable/dictionaries) bulabilirsiniz
 
-## Paralellization
+## Paralelleştirme
 
-If you have a multi-core system is a good idea to parallelize your fuzzing job to make the most of your CPU resources.
+Çok çekirdekli (multi-core) bir sisteminiz varsa, CPU kaynaklarınızdan en iyi şekilde yararlanmak için fuzzing işinizi paralelleştirmek iyi bir fikirdir.
 
-### Independent instances
+### Bağımsız örnekler (Independent instances)
 
-This is the simplest parallelization strategy. In this mode, we run fully separate instances of afl-fuzz.
+Bu, en basit paralelleştirme stratejisidir. Bu modda, tamamen ayrı afl-fuzz örnekleri çalıştırırız.
 
-It is important to remember that AFL uses a non-deterministic testing algorithm. So, if we run multiples AFL instances, We increase our chances of success.
+AFL'ın deterministik olmayan (non-deterministic) bir test algoritması kullandığını hatırlamak önemlidir. Yani birden çok AFL örneği çalıştırırsak, başarı şansımızı artırırız.
 
-For this, you only need to run multiple instances of "afl-fuzz" on multiple terminal windows, setting a different "output folder" for each one of them. A simple approach is to run as many fuzzing jobs as cores are on your system.
+Bunun için, sadece birden fazla terminal penceresinde, her biri için farklı bir "çıktı klasörü" ayarlayarak birden fazla "afl-fuzz" örneği çalıştırmanız yeterlidir. Basit bir yaklaşım, sisteminizdeki çekirdek sayısı kadar fuzzing işi çalıştırmaktır.
 
-Note: If you're using the -s flag, you need to use a different seed for each instance
+Not: -s bayrağını kullanıyorsanız, her örnek için farklı bir tohum (seed) kullanmanız gerekir
 
-### Shared instances
+### Paylaşımlı örnekler (Shared instances)
 
-The use of shared instances is a better approach to parallel fuzzing. In this case, each fuzzer instance gathers any test cases found by other fuzzers.
+Paylaşımlı örneklerin kullanımı, paralel fuzzing için daha iyi bir yaklaşımdır. Bu durumda, her fuzzer örneği, diğer fuzzer'ların bulduğu tüm test dosyalarını (test cases) toplar.
 
-You will usually have only one master instance at a time:
+Genellikle aynı anda yalnızca bir master (ana) örneğiniz olur:
 ```
 ./afl-fuzz -i afl_in -o afl_out -M Master -- ./program @@
 ```
 
-and N-1 number of slaves:
+ve N-1 adet slave (köle) örnek:
 ```
 ./afl-fuzz -i afl_in -o afl_out -S Slave1 -- ./program @@
 ./afl-fuzz -i afl_in -o afl_out -S Slave2 -- ./program @@
@@ -80,36 +80,36 @@ and N-1 number of slaves:
 ./afl-fuzz -i afl_in -o afl_out -S SlaveN -- ./program @@
 ```
 
-## Do it yourself!
-In order to complete this exercise, you need to:
-1) Find an interface application that makes use of the LibXML2 library
-2) Copy the [SampleInput.xml](./SampleInput.xml) file to your AFL input folder
-3) Create a custom dictionary for fuzzing XML
-4) Fuzz LibXML2 until you have a few unique crashes. I recommend you to use as many AFL instances as posible (CPU cores)
-5) Triage the crashes to find a PoC for the vulnerability
-6) Fix the issues
+## Kendin yap!
+Bu egzersizi tamamlamak için şunları yapmanız gerekir:
+1) LibXML2 kütüphanesini kullanan bir arayüz uygulaması bulmak
+2) [SampleInput.xml](./SampleInput.xml) dosyasını AFL girdi klasörünüze kopyalamak
+3) XML fuzz'lamak için özel bir sözlük (dictionary) oluşturmak
+4) LibXML2'yi birkaç benzersiz çökme elde edene kadar fuzz'lamak. Mümkün olduğunca çok AFL örneği (CPU çekirdeği) kullanmanızı öneririm
+5) Güvenlik açığı için PoC bulmak amacıyla çökmeleri incelemek (triage)
+6) Sorunları düzeltmek
 
-**Estimated time = 3 hours**
+**Tahmini süre = 3 saat**
 
 
 <details>
-  <summary>SPOILER ALERT! : Solution inside</summary>
+  <summary>SPOİLER UYARISI! : Çözüm içeride</summary>
 
-### Download and build your target
+### Hedefinizi indirin ve derleyin
 
-Let's first get our fuzzing target. Create a new directory for the project you want to fuzz:
+Önce fuzzing hedefimizi alalım. Fuzz'lamak istediğiniz proje için yeni bir dizin oluşturun:
 ```
 cd $HOME
 mkdir Fuzzing_libxml2 && cd Fuzzing_libxml2
 ```
 
-Download and uncompress libxml2-2.9.4.tar.gz
+libxml2-2.9.4.tar.gz'yi indirin ve sıkıştırmasını açın
 ```
 wget http://xmlsoft.org/download/libxml2-2.9.4.tar.gz
 tar xvf libxml2-2.9.4.tar.gz && cd libxml2-2.9.4/
 ```
 
-Build and install libxml2:
+libxml2'yi derleyip kurun:
 ```
 sudo apt-get install python-dev
 CC=afl-clang-lto CXX=afl-clang-lto++ CFLAGS="-fsanitize=address" CXXFLAGS="-fsanitize=address" LDFLAGS="-fsanitize=address" ./configure --prefix="$HOME/Fuzzing_libxml2/libxml2-2.9.4/install" --disable-shared --without-debug --without-ftp --without-http --without-legacy --without-python LIBS='-ldl'
@@ -117,78 +117,77 @@ make -j$(nproc)
 make install
 ```
 
-Now, we can test that all is working OK with:
+Şimdi, her şeyin yolunda olduğunu şu komutla test edebiliriz:
 ```
 ./xmllint --memory ./test/wml.xml
 ```
 
-and you should see something like that
+ve şuna benzer bir şey görmelisiniz
 
 ![](Images/Image1.png)
   
-### Seed corpus creation
+### Seed corpus (tohum külliyatı) oluşturma
 
-First of all, we need to get some XML samples. We're gonna use the **SampleInput.xml** provided in this repository:
+Her şeyden önce, bazı XML örneklerine ihtiyacımız var. Bu repoda sağlanan **SampleInput.xml** dosyasını kullanacağız:
 ```
 mkdir afl_in && cd afl_in
-wget https://raw.githubusercontent.com/antonio-morales/Fuzzing101/main/Exercise%205/SampleInput.xml
+wget https://raw.githubusercontent.com/Vorlixx/Fuzzing101-Turkce/main/Exercise%205/SampleInput.xml
 cd ..
 ```
   
-### Custom dictionary
+### Özel sözlük (Custom dictionary)
 
-Now, you need to create an XML dictionary. Alternatively, you can use the XML dictionary provided with AFL++: 
+Şimdi, bir XML sözlüğü oluşturmanız gerekiyor. Alternatif olarak, AFL++ ile birlikte sağlanan XML sözlüğünü kullanabilirsiniz: 
 ```
 mkdir dictionaries && cd dictionaries
 wget https://raw.githubusercontent.com/AFLplusplus/AFLplusplus/stable/dictionaries/xml.dict
 cd ..
 ```
-### Fuzzing time
+### Fuzzing zamanı
   
-In order to catch the bug, is mandatory to enable the `--valid` parameter. I also set the dictionary path with the **-x flag** and enabled the deterministic mutations with the **-D flag** (only for the master fuzzer):
+Hatayı yakalamak için `--valid` parametresini etkinleştirmek zorunludur. Ayrıca sözlük yolunu **-x bayrağıyla** ayarladım ve deterministik mutasyonları **-D bayrağıyla** etkinleştirdim (sadece master fuzzer için):
 
-For example, I ran the fuzzer with the following command 
+Örneğin fuzzer'ı şu komutla çalıştırdım 
 ```
 afl-fuzz -m none -i ./afl_in -o afl_out -s 123 -x ./dictionaries/xml.dict -D -M master -- ./xmllint --memory --noenc --nocdata --dtdattr --loaddtd --valid --xinclude @@
 ```
 
-You can run another slave instance with:
+Başka bir slave örneği şununla çalıştırabilirsiniz:
 ```
 afl-fuzz -m none -i ./afl_in -o afl_out -s 234 -S slave1 -- ./xmllint --memory --noenc --nocdata --dtdattr --loaddtd --valid --xinclude @@
 ```
   
-**Are you interested in fuzzing command-line arguments?** Take a look to the following [blog post](https://securitylab.github.com/research/fuzzing-challenges-solutions-1/), to the "Fuzzing command-line arguments" section.
+**Komut satırı argümanlarını fuzz'lamak ilginizi çekiyor mu?** Şu [blog yazısına](https://securitylab.github.com/research/fuzzing-challenges-solutions-1/), "Fuzzing command-line arguments" bölümüne göz atın.
 
-After a while, you should have multiple crashes:
+Bir süre sonra, birden fazla çökmeniz olmalı:
   
 ![](Images/Image2.png)
 
-### Triage
+### İnceleme (Triage)
   
-To debug a program built with ASan is so much easier than in the previous exercises. All you need to do is to feed the program with the crash file:
+ASan ile derlenmiş bir programı hata ayıklamak, önceki egzersizlere göre çok daha kolaydır. Yapmanız gereken tek şey programı çökme dosyasıyla beslemektir:
   
 ```
 ./xmllint --memory --noenc --nocdata --dtdattr --loaddtd --valid --xinclude './afl_out/default/crashes/id:000000,sig:06,src:003963,time:12456489,op:havoc,rep:4'
 ```
 
-and you will get a nice summary of the crash, including the execution trace:
+ve yürütme izini (execution trace) de içeren, çökmenin güzel bir özetini alacaksınız:
   
 ![](Images/Image3.png)  
+  
+### Sorunu düzeltin
 
-### Fix the issue
-
-The last step of the exercise is to fix the bug! Rebuild your target after the fix and check that your PoC don't crash the program anymore. This last part is left as exercise for the student.
+Egzersizin son adımı hatayı düzeltmektir! Düzeltmeden sonra hedefinizi yeniden derleyin ve PoC'nuzun artık programı çökertmediğini kontrol edin. Bu son kısım, öğrenciye (size) egzersiz olarak bırakılmıştır.
   
   <details>
-  <summary>Solution inside</summary>
+  <summary>Çözüm içeride</summary>
    --------------------------------------------------------------------------------------------------
     
-  Official fix:
+  Resmî düzeltme:
   - https://github.com/GNOME/libxml2/commit/932cc9896ab41475d4aa429c27d9afd175959d74
     
    </details> 
 
-Alternatively, you can download a newer version of LibXML, and check that the bug has been fixed.
+Alternatif olarak, LibXML'in daha yeni bir sürümünü indirebilir ve hatanın düzeltildiğini kontrol edebilirsiniz.
   
 </details>
-

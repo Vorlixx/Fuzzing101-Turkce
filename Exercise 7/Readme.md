@@ -1,125 +1,125 @@
-# Exercise 7 - VLC Media Player
+# Egzersiz 7 - VLC Media Player
 
-For this exercise, we will fuzz **VLC** media player. The goal is to find a crash/PoC for [**CVE-2019-14776**](https://nvd.nist.gov/vuln/detail/CVE-2019-14776) in VLC 3.0.7.1.
+Bu egzersizde **VLC** medya oynatıcısını fuzz'layacağız. Amaç, VLC 3.0.7.1 sürümünde [**CVE-2019-14776**](https://nvd.nist.gov/vuln/detail/CVE-2019-14776) için bir çökme/PoC bulmaktır.
 
 <details>
-  <summary>For more information about CVE-2019-14776 vulnerability, click me!</summary>
+  <summary>CVE-2019-14776 güvenlik açığı hakkında daha fazla bilgi için, buraya tıklayın!</summary>
   --------------------------------------------------------------------------------------------------------
   
-  **CVE-2019-14776** is an Out-of-bounds Read vulnerability that can be triggered via a crafted WMV/ASF (Windows Media Video) file.
+  **CVE-2019-14776**, özel olarak hazırlanmış (crafted) bir WMV/ASF (Windows Media Video) dosyası yoluyla tetiklenebilen bir Sınır Dışı Okuma (Out-of-bounds Read) güvenlik açığıdır.
   
- An Out-of-bounds Read is a vulnerability that occurs when the program reads data past the end, or before the beginning, of the intended buffer.
+  Sınır Dışı Okuma (Out-of-bounds Read), program veriyi hedeflenen tamponun (buffer) sonundan öteye ya da başlangıcından öncesine doğru okuduğunda meydana gelen bir güvenlik açığıdır.
 
-As a result, it allows remote attackers to cause a denial of service or possibly obtain potentially sensitive information from process memory.
+Sonuç olarak, uzaktan saldırganlara hizmet reddine (denial of service) yol açma ya da işlem belleğinden potansiyel olarak hassas bilgiler edinme imkânı verir.
 
-You can find more information about Out-of-bounds Read vulnerabilities at the following link: https://cwe.mitre.org/data/definitions/125.html
+Sınır Dışı Okuma (Out-of-bounds Read) güvenlik açıkları hakkında daha fazla bilgiyi şu bağlantıda bulabilirsiniz: https://cwe.mitre.org/data/definitions/125.html
   
 </details>
 
 
-## What you will learn
-Once you complete this exercise you will know:
-- How to use Partial Instrumentation to only instrument the relevant parts of the program
-- How to write fuzzing harnesses to test large applications more efficiently
+## Neler öğreneceksiniz?
+Bu egzersizi tamamladığınızda şunları bilmiş olacaksınız:
+- Programın yalnızca ilgili kısımlarını enstrümante etmek için Kısmi Enstrümantasyonu (Partial Instrumentation) nasıl kullanacağınızı
+- Büyük uygulamaları daha verimli test etmek için fuzzing harness'leri nasıl yazacağınızı
 
-## Read Before Start
-- I suggest you try to **solve the exercise by yourself** without checking the solution. Try as hard as you can, and only if you get stuck, check out the example solution below.
-- AFL uses a non-deterministic testing algorithm, so two fuzzing sessions are never the same. That's why I highly recommend **to set a fixed seed (-s 123)**. This way your fuzzing results will be similar to those shown here and that will allow you to follow the exercises more easily.  
-- If you find a new vulnerability, **please submit a security report** to the project. If you need help or have any doubt about the process, the [GitHub Security Lab](mailto:securitylab.github.com) can help you with it :)
+## Başlamadan Önce Okuyun
+- Egzersizi, çözüme bakmadan **kendiniz çözmenizi** öneririm. Gücünüzün yettiği kadar çabalayın ve ancak takılırsanız aşağıdaki örnek çözüme bakın.
+- AFL, deterministik olmayan (non-deterministic) bir test algoritması kullanır, bu yüzden iki fuzzing oturumu asla aynı olmaz. Bu yüzden **sabit bir tohum değeri (seed) ayarlamanızı (-s 123)** şiddetle tavsiye ederim. Bu sayede fuzzing sonuçlarınız burada gösterilenlere benzer olacak ve egzersizleri daha kolay takip etmenizi sağlayacak.  
+- Yeni bir güvenlik açığı bulursanız, **lütfen projeye bir güvenlik raporu gönderin**. Bu süreç hakkında yardıma ihtiyacınız olursa ya da herhangi bir şüpheniz olursa [GitHub Security Lab](mailto:securitylab.github.com) size yardımcı olabilir :)
 
-## Contact
-Are you stuck and looking for help? Do you have suggestions for making this course better or just positive feedback so that we create more fuzzing content?
-Do you want to share your fuzzing experience with the community?
-Join the GitHub Security Lab Slack and head to the `#fuzzing` channel. [Request an invite to the GitHub Security Lab Slack](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
+## İletişim
+Takıldınız mı ve yardım mı arıyorsunuz? Bu kursu daha iyi hale getirmek için önerileriniz mi var, yoksa daha fazla fuzzing içeriği oluşturmamız için sadece olumlu geri bildirimler mi? 
+Fuzzing deneyiminizi toplulukla paylaşmak ister misiniz?
+GitHub Security Lab Slack'ine katılın ve `#fuzzing` kanalına gidin. [GitHub Security Lab Slack daveti isteyin](mailto:securitylab-social@github.com?subject=Request%20an%20invite%20to%20the%20GitHub%20Security%20Lab%20Slack)
 
-## Environment
+## Ortam
 
-All the exercises have been tested on **Ubuntu 20.04.2 LTS**. I highly recommend you to use **the same OS version** to avoid different fuzzing results and to run AFL++ **on bare-metal** hardware, and not virtualized machines, for best performance.
+Tüm egzersizler **Ubuntu 20.04.2 LTS** üzerinde test edilmiştir. Farklı fuzzing sonuçlarını önlemek için **aynı işletim sistemi sürümünü** kullanmanızı ve en iyi performans için AFL++'ı **bare-metal** (sanallaştırılmamış) donanımda, sanallaştırılmış makinelerde değil, çalıştırmanızı şiddetle tavsiye ederim.
 
-Otherwise, you can find an Ubuntu 20.04.2 LTS VMware image [here](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing). You can also use VirtualBox instead of VMware.
+Aksi takdirde, Ubuntu 20.04.2 LTS VMware imajını [burada](https://drive.google.com/file/d/1_m1x-SHcm7Muov2mlmbbt8nkrMYp0Q3K/view?usp=sharing) bulabilirsiniz. VMware yerine VirtualBox da kullanabilirsiniz.
 
-The username / password for this VM are `fuzz` / `fuzz`.
+Bu sanal makinenin kullanıcı adı / şifresi `fuzz` / `fuzz`'tur.
 
-## Partial Instrumentation
+## Kısmi Enstrümantasyon (Partial Instrumentation)
 
-One of the advantages of using an evolutionary coverage-guided fuzzer is that it’s capable of finding new execution paths all by itself. However, this can often also be a disadvantage. This is particularly true when we face software with a highly modular architecture (as in the case of VLC media player), where each module performs a specific task.
+Evolutionary bir coverage-guided fuzzer kullanmanın avantajlarından biri, yeni yürütme yollarını (execution paths) kendi başına bulabilmesidir. Ancak bu, genellikle bir dezavantaj da olabilir. Bu, özellikle her modülün belirli bir görevi yaptığı, son derece modüler bir mimariye sahip yazılımlarla (VLC media player durumunda olduğu gibi) karşılaştığımızda geçerlidir.
 
-So, let's assume we fed the fuzzer with a valid MKV file. But after several mutations of the input file, the file “magic bytes” have changed and now the input file is viewed as an AVI file by our program. Therefore, this “mutated MKV file” is now processed by AVI Demux. After some time, the file magic bytes change once again and now the file is viewed as an MPEG file. In both cases, the potential of this newly mutated file to increase our code coverage is very poor because this new file won’t have any valid syntax structure.
+Diyelim ki fuzzer'a geçerli bir MKV dosyası verdik. Ancak girdi dosyasının birkaç mutasyonundan sonra, dosyanın "magic bytes" değerleri değişti ve artık girdi dosyası programımız tarafından bir AVI dosyası olarak görülüyor. Bu nedenle, bu "mutasyona uğramış MKV dosyası" artık AVI Demux tarafından işleniyor. Bir süre sonra, dosyanın magic bytes'ları bir kez daha değişiyor ve artık dosya bir MPEG dosyası olarak görülüyor. Her iki durumda da, bu yeni mutasyona uğramış dosyanın kod kapsamımızı artırma potansiyeli çok düşüktür, çünkü bu yeni dosya herhangi bir geçerli sözdizimi yapısına (syntax structure) sahip olmayacaktır.
 
-In short, if we don’t put constraints on code coverage, the fuzzer can easily choose a wrong path which in turn makes the fuzzing process less effective.
+Kısacası, kod kapsamına kısıtlama koymazsak, fuzzer kolayca yanlış bir yol seçebilir ve bu da fuzzing sürecini daha az etkili hale getirir.
 
-To address this problem, AFL++ includes a Partial Instrumentation feature that allows you to specify which functions/files should be compiled with or without instrumentation. This helps the fuzzer focus on the important parts of the program, avoiding undesired noise and disturbance by exercising uninteresting code paths.
+Bu sorunu çözmek için AFL++, hangi fonksiyonların/dosyaların enstrümantasyonlu ya da enstrümantasyonsuz derleneceğini belirtmenize olanak tanıyan bir Kısmi Enstrümantasyon (Partial Instrumentation) özelliği içerir. Bu, fuzzer'ın programın önemli kısımlarına odaklanmasına yardımcı olur ve ilginç olmayan kod yollarını çalıştırarak oluşan istenmeyen gürültü ve bozulmayı önler.
 
-To use it, we set the environment AFL_LLVM_ALLOWLIST variable when compiling. This environment variable must point to a file containing all the functions/filenames that should be instrumented.
+Bunu kullanmak için, derleme yaparken AFL_LLVM_ALLOWLIST ortam değişkenini ayarlıyoruz. Bu ortam değişkeni, enstrümante edilmesi gereken tüm fonksiyonların/dosya adlarını içeren bir dosyaya işaret etmelidir.
 
-You can find more information about AFL++ partial instrumentation at: https://github.com/AFLplusplus/AFLplusplus/blob/stable/instrumentation/README.instrument_list.md
+AFL++ kısmi enstrümantasyonu hakkında daha fazla bilgiyi şurada bulabilirsiniz: https://github.com/AFLplusplus/AFLplusplus/blob/stable/instrumentation/README.instrument_list.md
 
-## Do it yourself!
-In order to complete this exercise, you need to:
-1) Write a partial instrumentation file containing the ASF demuxing functions and filenames
-2) Create a fuzzing harness for fuzzing ASF file format (persistent mode)
-3) Create a seed corpus of ASF samples
-4) Optional: Create a fuzzing dictionary for the ASF file format
-5) Fuzz VLC until you have a few unique crashes. I recommend you to use as many AFL instances as possible (CPU cores)
-6) Triage the crashes to find a PoC for the vulnerability
-7) Fix the issues
+## Kendin yap!
+Bu egzersizi tamamlamak için şunları yapmanız gerekir:
+1) ASF demuxing fonksiyonlarını ve dosya adlarını içeren bir kısmi enstrümantasyon (partial instrumentation) dosyası yazmak
+2) ASF dosya formatını fuzz'lamak için bir fuzzing harness yazmak (persistent mod)
+3) ASF örneklerinden oluşan bir seed corpus (tohum külliyatı) oluşturmak
+4) İsteğe bağlı: ASF dosya formatı için bir fuzzing sözlüğü (dictionary) oluşturmak
+5) VLC'yi birkaç benzersiz çökme elde edene kadar fuzz'lamak. Mümkün olduğunca çok AFL örneği (CPU çekirdeği) kullanmanızı öneririm
+6) Güvenlik açığı için PoC bulmak amacıyla çökmeleri incelemek (triage)
+7) Sorunları düzeltmek
 
-**Estimated time = 6 hours**
+**Tahmini süre = 6 saat**
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------
 
 <details>
-  <summary>SPOILER ALERT! : Solution inside</summary>
+  <summary>SPOİLER UYARISI! : Çözüm içeride</summary>
 
-### Download the target
+### Hedefi indirin
   
-Let's first get our fuzzing target. Create a new directory for the project you want to fuzz:
+Önce fuzzing hedefimizi alalım. Fuzz'lamak istediğiniz proje için yeni bir dizin oluşturun:
 ```
 cd $HOME
 mkdir fuzzing_vlc && cd fuzzing_vlc
 ```
   
-Download and uncompress vlc-3.0.7.1.tar.xz:
+vlc-3.0.7.1.tar.xz'yi indirin ve sıkıştırmasını açın:
 ```
 wget https://download.videolan.org/pub/videolan/vlc/3.0.7.1/vlc-3.0.7.1.tar.xz
 tar -xvf vlc-3.0.7.1.tar.xz && cd vlc-3.0.7.1/
 ```
     
-### Build VLC:
+### VLC'yi derleyin:
 ```
 ./configure --prefix="$HOME/fuzzing_vlc/vlc-3.0.7.1/install" --disable-a52 --disable-lua --disable-qt
 make -j$(nproc)
 ```
 
-To test everything is working properly, just type:
+Her şeyin düzgün çalıştığını test etmek için sadece şunu yazın:
 ```
 ./bin/vlc-static --help
 ```
   
-and you should see something like that
+ve şuna benzer bir şey görmelisiniz
 
 ![](Images/image0.png)
   
 
-### Seed corpus creation
+### Seed corpus (tohum külliyatı) oluşturma
  
-You can find a lot of video samples in the [ffmpeg samples repository](https://samples.ffmpeg.org/)
+[ffmpeg samples reposunda](https://samples.ffmpeg.org/) birçok video örneği bulabilirsiniz
   
-I advise you to pick some samples and then, use a video editor to shrink the video file to the smallest size possible. 
+Bazı örnekler seçmenizi ve ardından bir video düzenleyici kullanarak video dosyasını mümkün olan en küçük boyuta indirmenizi öneririm.
   
-These are some examples of open-source video editors:
+Bunlar, açık kaynaklı bazı video düzenleyicilerin örnekleridir:
   
 - [OpenShot](https://www.openshot.org/)
 - [Shotcut](https://shotcut.org/)
   
-Or more easily, just copy the [short2.wmv](./InputCorpus/short2.wmv) and [veryshort.wmv](./InputCorpus/veryshort.wmv) files to your AFL input folder.
+Ya da daha kolay bir yol olarak, sadece [short2.wmv](./InputCorpus/short2.wmv) ve [veryshort.wmv](./InputCorpus/veryshort.wmv) dosyalarını AFL girdi klasörünüze kopyalayın.
   
   
 ### Fuzzing harness
   
-If you try to fuzz directly the ``vlc-static`` binary you'll see that AFL only gets a few executions per second. This is because VLC startup is very time-consuming. That's why I recommend you create a **custom fuzzing harness** for fuzzing VLC.
+Doğrudan ``vlc-static`` binary'sini fuzz'lamayı denerseniz, AFL'ın saniyede yalnızca birkaç yürütme aldığını görürsünüz. Bunun nedeni, VLC'nin başlatılmasının (startup) çok zaman alıcı olmasıdır. Bu yüzden VLC'yi fuzz'lamak için **özel bir fuzzing harness** oluşturmanızı öneririm.
   
-I chose to modify the ``./test/vlc-demux-run.c`` file to include my fuzzing harness. In this way, you can compile the harness just by doing:
+Fuzzing harness'imi dahil etmek için ``./test/vlc-demux-run.c`` dosyasını değiştirmeyi seçtim. Bu sayede, harness'i sadece şunu yaparak derleyebilirsiniz:
   
 ```
 cd test
@@ -127,72 +127,73 @@ make vlc-demux-run -j$(nproc) LDFLAGS="-fsanitize=address"
 cd ..  
 ```
   
-Since the bug exists in the ASF demuxing, I call to the ``vlc_demux_process_memory`` function. This function try to demux a data buffer previously stored in the memory. You can find my code changes [here](./fuzzing_harness.patch)
+Hata ASF demuxing'de bulunduğundan, ``vlc_demux_process_memory`` fonksiyonunu çağırıyorum. Bu fonksiyon, önceden bellekte saklanmış bir veri tamponunu (data buffer) demux etmeye çalışır. Kod değişikliklerimi [burada](./fuzzing_harness.patch) bulabilirsiniz
   
   
-### Partial instrumentation
+### Kısmi enstrümantasyon
   
-At first, I tried just including the filenames involved in ASF demuxing. Unfortunately, this approach didn't work.
+Başlangıçta sadece ASF demuxing'de rol oynayan dosya adlarını dahil etmeyi denedim. Ne yazık ki, bu yaklaşım işe yaramadı.
 
-It seems that matching on filenames is [not always possible](https://github.com/AFLplusplus/AFLplusplus/issues/1018#issuecomment-879045408), so I opted for a mixing approach including function matching and filename matching:
+Dosya adlarıyla eşleştirme [her zaman mümkün değil](https://github.com/AFLplusplus/AFLplusplus/issues/1018#issuecomment-879045408) gibi görünüyor, bu yüzden fonksiyon eşleştirme ve dosya adı eşleştirmeyi içeren karma bir yaklaşımı tercih ettim:
   
 
 ![](Images/image2.png)  
   
-You can download my partial instrumentation file [here](./Partial_instrumentation)
+Kısmi enstrümantasyon dosyamı [buradan](./Partial_instrumentation) indirebilirsiniz
 
   
-### Minor changes
+### Küçük değişiklikler
   
-To speed-up the ASF fuzzing speed, I recommend you to apply this patch to ``modules/demux/libasf.c``  (no more clues at the moment ;) ) : [speedup.patch](./speedup.patch)
+ASF fuzzing hızını artırmak için, ``modules/demux/libasf.c`` dosyasına bu yamayı (patch) uygulamanızı öneririm (şimdilik daha fazla ipucu yok ;) ) : [speedup.patch](./speedup.patch)
   
-### Fuzzing time  
+### Fuzzing zamanı  
   
-Time for building VLC using **afl-clang-fast** as the compiler and with ASAN enabled:
+VLC'yi **afl-clang-fast** derleyicisiyle ve ASAN etkinleştirilmiş şekilde derleme zamanı:
   
 ```
 CC="afl-clang-fast" CXX="afl-clang-fast++" ./configure --prefix="$HOME/fuzzing_vlc/vlc-3.0.7.1/install" --disable-a52 --disable-lua --disable-qt --with-sanitizer=address
 AFL_LLVM_ALLOWLIST=$HOME/fuzzing_vlc/vlc-3.0.7.1/Partial_instrumentation make -j$(nproc) LDFLAGS="-fsanitize=address"
 ```
   
-Build the fuzzing harness:
+Fuzzing harness'i derleyin:
 ```
 cd test
 make vlc-demux-run -j$(nproc) LDFLAGS="-fsanitize=address"
 cd ..  
 ```
 
-Now, you can run the fuzzer with the following command:
+Şimdi, fuzzer'ı şu komutla çalıştırabilirsiniz:
 ```
 afl-fuzz -t 100 -m none -i './afl_in' -o './afl_out' -x asf_dictionary.dict -D -M master -- ./test/vlc-demux-run @@  
+  
 ```
   
-Some notes:
-- The timeout parameter is heavily reliant on the computer. You will need to adjust this value.
+Bazı notlar:
+- Zaman aşımı (timeout) parametresi büyük ölçüde bilgisayara bağlıdır. Bu değeri ayarlamanız gerekecek.
 
   
-After a while, you should have multiple crashes:
+Bir süre sonra, birden fazla çökmeniz olmalı:
 ![](Images/image1.png)  
 
-### Triage
+### İnceleme (Triage)
   
-The ASan trace may look like:
+ASan izi (trace) şöyle görünebilir:
   
 ![](Images/image3.png)  
   
-### Fix the issues
+### Sorunları düzeltme
   
-The last step of the exercise is to fix the bug. Rebuild your target after the fix and check that your PoC doesn't crash the program anymore. This last part is left as an exercise for the student.
+Egzersizin son adımı hatayı düzeltmektir. Düzeltmeden sonra hedefinizi yeniden derleyin ve PoC'nuzun artık programı çökertmediğini kontrol edin. Bu son kısım, öğrenciye (size) egzersiz olarak bırakılmıştır.
   
   <details>
-  <summary>Solution inside</summary>
+  <summary>Çözüm içeride</summary>
    --------------------------------------------------------------------------------------------------
     
-  Official fixes:
+  Resmî düzeltme:
     
   - https://github.com/videolan/vlc/commit/fdbdd677c1e6262f31771b0ba10afb24aabf108c#diff-a22170125046390274dd33c2cb5bb0e99d485e6708b376f40978de9534ac55a9
     
    </details> 
 
-Alternatively, you can download a newer version of VLC, and check that both bugs have been fixed.
+Alternatif olarak, VLC'nin daha yeni bir sürümünü indirebilir ve her iki hatanın da düzeltildiğini kontrol edebilirsiniz.
   
