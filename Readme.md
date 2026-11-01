@@ -1,5 +1,5 @@
 # Fuzzing-101
-> **Not:** Bu depo, [Antonio Morales](https://github.com/antonio-morales)'in [**Fuzzing101**](https://github.com/antonio-morales/Fuzzing101) kursunun resmi olmayan **Türkçe çevirisidir**. Orijinal içerik [Apache-2.0](./LICENSE) lisansıyla sunulmuştur; tüm haklar orijinal yazarına aittir. Ayrıntılar için [NOTICE.md](./NOTICE.md) dosyasına bakabilirsiniz. Çeviri hatalarını [Issues](https://github.com/Vorlixx/Fuzzing101-Turkce/issues) üzerinden bildirebilirsiniz.
+> **Note:** This repository is an unofficial **Turkish translation** of the [**Fuzzing101**](https://github.com/antonio-morales/Fuzzing101) course by [Antonio Morales](https://github.com/antonio-morales). The original content is provided under the [Apache-2.0](./LICENSE) license; all rights belong to the original author. See [NOTICE.md](./NOTICE.md) for details. You can report translation errors via [Issues](https://github.com/Vorlixx/Fuzzing101-Turkce/issues).
 
 Gerçek bir uzman gibi fuzzing öğrenmek istiyorsunuz ama başlamayı bilmiyor musunuz?
 
